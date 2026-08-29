@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function verifiedEmail() { return signedIn() && request.auth.token.email != null && request.auth.token.email_verified == true; }
+    function isTeacher() {
+      return verifiedEmail()
+        && exists(/databases/$(database)/documents/teachers/$(request.auth.token.email))
+        && get(/databases/$(database)/documents/teachers/$(request.auth.token.email)).data.active != false;
+    }
+    function sessionExists(sessionId) {
+      return exists(/databases/$(database)/documents/trainingSessions/$(sessionId));
+    }
+    function sessionData(sessionId) {
+      return get(/databases/$(database)/documents/trainingSessions/$(sessionId)).data;
+    }
+    function sessionStillOpen(sessionId) {
+      return sessionExists(sessionId)
+        && sessionData(sessionId).active != false
+        && request.time <= sessionData(sessionId).closesAt;
+    }
+    function sessionStarted(sessionId) {
+      return sessionExists(sessionId) && request.time >= sessionData(sessionId).opensAt;
+    }
+    function ownsReflection(reflectionId) {
+      return signedIn() && get(/databases/$(database)/documents/reflections/$(reflectionId)).data.studentUid == request.auth.uid;
+    }
+
+    match /teachers/{teacherEmail} {
+      allow read: if verifiedEmail() && (request.auth.token.email == teacherEmail || isTeacher());
+      allow create, update, delete: if false;
+    }
+
+    match /trainingSessions/{sessionId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isTeacher();
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isTeacher());
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && ((isTeacher() && request.resource.data.role == 'teacher') || (!isTeacher() && request.resource.data.role == 'student'));
+      allow update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher());
+      allow create: if signedIn()
+        && request.resource.data.studentUid == request.auth.uid
+        && request.resource.data.studentEmail == request.auth.token.email
+        && request.resource.data.sessionId is string
+        && sessionStillOpen(request.resource.data.sessionId)
+        && request.resource.data.trainingDate == sessionData(request.resource.data.sessionId).trainingDate
+        && (request.resource.data.status == 'absent' || (request.resource.data.status == 'attended' && sessionStarted(request.resource.data.sessionId)));
+      allow update: if signedIn()
+        && resource.data.studentUid == request.auth.uid
+        && request.resource.data.studentUid == resource.data.studentUid
+        && request.resource.data.studentEmail == resource.data.studentEmail
+        && request.resource.data.sessionId == resource.data.sessionId
+        && request.resource.data.trainingDate == resource.data.trainingDate
+        && sessionStillOpen(resource.data.sessionId)
+        && (request.resource.data.status == 'absent' || (request.resource.data.status == 'attended' && sessionStarted(resource.data.sessionId)));
+      allow delete: if isTeacher();
+    }
+
+    match /reflections/{reflectionId} {
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher());
+      allow create: if signedIn()
+        && request.resource.data.studentUid == request.auth.uid
+        && request.resource.data.studentEmail == request.auth.token.email
+        && request.resource.data.sessionId is string
+        && sessionStillOpen(request.resource.data.sessionId)
+        && sessionStarted(request.resource.data.sessionId)
+        && request.resource.data.trainingDate == sessionData(request.resource.data.sessionId).trainingDate
+        && request.resource.data.effort is int
+        && request.resource.data.effort >= 1 && request.resource.data.effort <= 5
+        && request.resource.data.activities is list && request.resource.data.activities.size() >= 1
+        && request.resource.data.wentWell is string
+        && request.resource.data.improvement is string
+        && request.resource.data.nextGoal is string;
+      allow update: if signedIn() && resource.data.studentUid == request.auth.uid
+        && request.resource.data.studentUid == resource.data.studentUid
+        && request.resource.data.studentEmail == resource.data.studentEmail
+        && resource.data.sessionId is string
+        && sessionStillOpen(resource.data.sessionId);
+      allow delete: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher());
+    }
+
+    match /comments/{commentId} {
+      allow read: if signedIn() && (isTeacher() || ownsReflection(resource.data.reflectionId));
+      allow create: if isTeacher()
+        && request.resource.data.teacherUid == request.auth.uid
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() > 0
+        && request.resource.data.comment.size() <= 800;
+      allow update, delete: if isTeacher();
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
