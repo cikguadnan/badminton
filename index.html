@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#071813" />
+  <meta name="description" content="Badminton Training Journal — attendance, reflection and coach feedback." />
+  <title>Badminton Journal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <section id="loginView" class="login-screen">
+      <div class="login-visual" aria-hidden="true">
+        <div class="court-lines"></div>
+        <div class="shuttle shuttle-one">🏸</div>
+        <div class="shuttle shuttle-two">🏸</div>
+      </div>
+      <div class="login-panel">
+        <div class="brand-lockup">
+          <div class="brand-icon">🏸</div>
+          <div><div class="brand-name">BADMINTON <span>JOURNAL</span></div><div class="brand-tagline">Train. Reflect. Improve.</div></div>
+        </div>
+        <div class="login-copy">
+          <div class="eyebrow">TEAM TRAINING HUB</div>
+          <h1>Every session<br><span>counts.</span></h1>
+          <p>Check in for training, reflect on your progress, and stay connected with your coaches.</p>
+        </div>
+        <div id="configWarning" class="notice hidden"></div>
+        <button id="googleSignInBtn" class="google-btn" type="button"><span class="google-g">G</span><span>Continue with Google</span></button>
+        <div class="login-features">
+          <div><span>✓</span><strong>Record attendance</strong><small>Let your coach know whether you're training.</small></div>
+          <div><span>✓</span><strong>Reflect & improve</strong><small>Build a useful journal after every session.</small></div>
+          <div><span>✓</span><strong>Coach feedback</strong><small>Review comments and track your growth.</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="authenticatedApp" class="app-layout hidden">
+      <aside class="sidebar">
+        <div class="brand-lockup compact">
+          <div class="brand-icon">🏸</div>
+          <div><div class="brand-name">BADMINTON <span>JOURNAL</span></div><div class="brand-tagline">Train. Reflect. Improve.</div></div>
+        </div>
+        <nav id="desktopNav" class="side-nav" aria-label="Main navigation"></nav>
+        <div class="sidebar-quote"><div class="quote-mark">“</div><p>Discipline today.<br><strong>Champion tomorrow.</strong></p></div>
+      </aside>
+
+      <div class="app-main">
+        <header class="topbar">
+          <div class="topbar-date" id="topDate"></div>
+          <div class="user-chip">
+            <img id="topAvatar" class="avatar hidden" alt="Profile" />
+            <div id="topAvatarFallback" class="avatar avatar-fallback">P</div>
+            <div class="user-meta"><div id="topUserName" class="user-name">Player</div><div id="topUserRole" class="user-role">Player</div></div>
+            <button id="signOutBtn" class="icon-btn" type="button" aria-label="Sign out" title="Sign out">↪</button>
+          </div>
+        </header>
+        <main id="mainContent" class="content"></main>
+      </div>
+      <nav id="bottomNav" class="bottom-nav" aria-label="Mobile navigation"></nav>
+    </section>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js?v=2.2.1"></script>
+</body>
+</html>
