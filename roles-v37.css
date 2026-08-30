@@ -1,0 +1,12 @@
+/* V3.7 staff roles + player level filters */
+.staff-filter-bar{display:flex;align-items:end;justify-content:space-between;gap:14px;margin:14px 0 18px;padding:14px 16px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.025)}
+.staff-filter-field{width:min(100%,240px)}
+.filter-result-count{display:inline-flex;align-items:center;min-height:38px;padding:0 12px;border-radius:999px;background:rgba(140,221,56,.08);border:1px solid rgba(140,221,56,.16);color:var(--green-soft);font-size:11px;font-weight:800;white-space:nowrap}
+.staff-reflection-filter{margin-top:10px}
+.coach-mode .dashboard-nav{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:800px){
+  .coach-mode .bottom-app-nav{grid-template-columns:repeat(3,1fr)}
+  .staff-filter-bar{align-items:stretch;flex-direction:column;padding:12px 13px}
+  .staff-filter-field{width:100%}
+  .filter-result-count{align-self:flex-start;min-height:32px}
+}
