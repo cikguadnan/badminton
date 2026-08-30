@@ -7,7 +7,7 @@
   <meta name="description" content="WRSS Badminton Training Hub" />
   <title>WRSS Badminton Training Hub</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=3.1" />
 </head>
 <body>
   <main id="app">
@@ -43,7 +43,7 @@
           <span>Continue with Google</span>
         </button>
 
-        <div class="login-note">V3 clean rebuild • Login foundation</div>
+        <div class="login-note">V3 clean rebuild • Training sessions</div>
       </div>
     </section>
 
@@ -60,9 +60,10 @@
       </header>
 
       <div class="dashboard-content">
+        <div id="dashboardMessage" class="dashboard-message success" hidden></div>
         <div class="dashboard-badge" id="dashboardRole">Player</div>
         <h1 id="dashboardTitle">Player Dashboard</h1>
-        <p id="dashboardCopy">V3 login is working.</p>
+        <p id="dashboardCopy">Loading your training hub.</p>
 
         <div class="identity-card">
           <div class="avatar-circle" id="avatarCircle">✓</div>
@@ -72,17 +73,11 @@
           </div>
         </div>
 
-        <div class="success-card">
-          <div class="success-icon">✓</div>
-          <div>
-            <strong>Authentication foundation working</strong>
-            <p>Google sign-in and coach/player detection are running on the new V3 codebase.</p>
-          </div>
-        </div>
+        <section id="trainingSection" class="training-section" aria-live="polite"></section>
       </div>
     </section>
   </main>
 
-  <script type="module" src="app.js?v=3.0.0"></script>
+  <script type="module" src="app.js?v=3.1.0"></script>
 </body>
 </html>
