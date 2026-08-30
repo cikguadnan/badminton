@@ -2,15 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#06120e" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#10221b" />
   <meta name="description" content="WRSS Badminton Training Hub" />
   <title>WRSS Badminton Training Hub</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
-  <link rel="stylesheet" href="styles.css?v=3.3" />
+  <link rel="stylesheet" href="styles.css?v=3.5" />
   <link rel="stylesheet" href="attendance.css?v=3.2" />
   <link rel="stylesheet" href="v3-final.css?v=3.3" />
   <link rel="stylesheet" href="dashboard-polish.css?v=3.4" />
+  <link rel="stylesheet" href="ux-v35.css?v=3.5" />
 </head>
 <body>
   <main id="app">
@@ -19,87 +20,69 @@
         <div class="hub-brand">
           <div class="hub-logo" aria-hidden="true">
             <svg viewBox="0 0 120 120" role="img">
-              <path d="M29 88a44 44 0 1 1 65-61" fill="none" stroke="#7fd321" stroke-width="6" stroke-linecap="round"/>
+              <path d="M29 88a44 44 0 1 1 65-61" fill="none" stroke="#8cdd38" stroke-width="6" stroke-linecap="round"/>
               <g transform="rotate(42 67 55)">
-                <path d="M55 44 76 15l8 7-20 27z" fill="#fff"/>
-                <path d="M61 49 86 25l6 8-25 22z" fill="#f2f4f3"/>
-                <path d="M67 54 93 38l4 9-25 14z" fill="#fff"/>
-                <path d="M73 59 99 52l1 9-25 5z" fill="#eff2f1"/>
-                <ellipse cx="57" cy="61" rx="9" ry="8" fill="#f8faf9"/>
-                <path d="M53 54c5 0 10 2 14 6" stroke="#70ca22" stroke-width="5" fill="none"/>
+                <path d="M55 44 76 15l8 7-20 27z" fill="#fff"/><path d="M61 49 86 25l6 8-25 22z" fill="#f2f4f3"/><path d="M67 54 93 38l4 9-25 14z" fill="#fff"/><path d="M73 59 99 52l1 9-25 5z" fill="#eff2f1"/><ellipse cx="57" cy="61" rx="9" ry="8" fill="#f8faf9"/><path d="M53 54c5 0 10 2 14 6" stroke="#70ca22" stroke-width="5" fill="none"/>
               </g>
             </svg>
           </div>
-          <div class="hub-title">WRSS BADMINTON</div>
-          <div class="hub-subtitle">Training Hub</div>
+          <div class="hub-title">WRSS BADMINTON</div><div class="hub-subtitle">Training Hub</div>
         </div>
-
-        <div class="login-copy">
-          <h1>Your training.<br><span>Your progress.</span></h1>
-          <p>Sign in to access your badminton training hub.</p>
-        </div>
-
+        <div class="login-copy"><h1>Your training.<br><span>Your progress.</span></h1><p>Sign in to access your badminton training hub.</p></div>
         <div id="statusBox" class="status-box info" hidden></div>
-
-        <button id="googleSignInBtn" class="google-btn" type="button">
-          <span class="google-g">G</span>
-          <span>Continue with Google</span>
-        </button>
-
-        <div class="login-note">WRSS Badminton Training Hub • V3</div>
+        <button id="googleSignInBtn" class="google-btn" type="button"><span class="google-g">G</span><span>Continue with Google</span></button>
+        <div class="login-note">WRSS Badminton Training Hub • V3.5</div>
       </div>
     </section>
 
     <section id="dashboardView" class="dashboard-shell" hidden>
       <header class="dashboard-topbar">
-        <div class="mini-brand">
-          <span class="brand-dot">🏸</span>
-          <div>
-            <strong>WRSS Badminton</strong>
-            <small>Training Hub V3</small>
-          </div>
-        </div>
+        <div class="mini-brand"><span class="brand-dot">🏸</span><div><strong>WRSS Badminton</strong><small>Training Hub</small></div></div>
         <button id="signOutBtn" class="secondary-btn" type="button">Sign out</button>
       </header>
 
       <div class="dashboard-content">
         <div id="dashboardMessage" class="dashboard-message success" hidden></div>
 
-        <div class="dashboard-hero">
-          <div class="dashboard-hero-copy">
-            <div class="dashboard-badge" id="dashboardRole">Player</div>
-            <h1 id="dashboardTitle">Player Dashboard</h1>
-            <p id="dashboardCopy">Loading your training hub.</p>
-          </div>
-
-          <div class="identity-card compact-identity">
-            <div class="avatar-circle" id="avatarCircle">✓</div>
-            <div>
-              <h2 id="dashboardName">WRSS Badminton Member</h2>
-              <p id="dashboardEmail"></p>
+        <section id="homePage" class="app-page mobile-page-active" data-page-panel="home">
+          <div class="dashboard-hero">
+            <div class="dashboard-hero-copy">
+              <div class="dashboard-badge" id="dashboardRole">Player</div>
+              <h1 id="dashboardTitle">Player Dashboard</h1>
+              <p id="dashboardCopy">Loading your training hub.</p>
+            </div>
+            <div class="identity-card compact-identity">
+              <div class="avatar-circle" id="avatarCircle">✓</div>
+              <div><h2 id="dashboardName">WRSS Badminton Member</h2><p id="dashboardEmail"></p></div>
             </div>
           </div>
-        </div>
-
-        <section id="overviewSection" class="overview-section" aria-live="polite"></section>
+          <section id="overviewSection" class="overview-section" aria-live="polite"></section>
+        </section>
 
         <nav class="dashboard-nav" aria-label="Dashboard sections">
+          <a href="#home">Home</a>
           <a href="#trainingSection">Training</a>
           <a href="#attendanceSection">Attendance</a>
           <a href="#reflectionsSection">Reflections</a>
           <a href="#profileSection"><span id="profileNavLabel">Profile</span></a>
         </nav>
 
-        <section id="trainingSection" class="training-section dashboard-feature" aria-live="polite"></section>
-        <section id="attendanceSection" class="training-section dashboard-feature" aria-live="polite"></section>
-        <section id="reflectionsSection" class="training-section dashboard-feature" aria-live="polite"></section>
-        <section id="profileSection" class="training-section dashboard-feature" aria-live="polite"></section>
-
-        <footer class="dashboard-footer">WRSS Badminton Training Hub • V3</footer>
+        <section id="trainingSection" class="training-section dashboard-feature app-page" data-page-panel="training" aria-live="polite"></section>
+        <section id="attendanceSection" class="training-section dashboard-feature app-page" data-page-panel="attendance" aria-live="polite"></section>
+        <section id="reflectionsSection" class="training-section dashboard-feature app-page" data-page-panel="reflections" aria-live="polite"></section>
+        <section id="profileSection" class="training-section dashboard-feature app-page" data-page-panel="profile" aria-live="polite"></section>
+        <footer class="dashboard-footer">WRSS Badminton Training Hub • V3.5</footer>
       </div>
+
+      <nav class="bottom-app-nav" aria-label="Mobile app navigation">
+        <button class="bottom-nav-btn active" data-page="home" type="button"><span class="nav-icon">⌂</span><span>Home</span></button>
+        <button class="bottom-nav-btn" data-page="training" type="button"><span class="nav-icon">◷</span><span>Training</span></button>
+        <button class="bottom-nav-btn" data-page="attendance" type="button"><span class="nav-icon">✓</span><span>Attendance</span></button>
+        <button class="bottom-nav-btn" data-page="reflections" type="button"><span class="nav-icon">✎</span><span>Journal</span></button>
+        <button class="bottom-nav-btn" data-page="profile" type="button"><span class="nav-icon">◎</span><span data-profile-nav-label>Profile</span></button>
+      </nav>
     </section>
   </main>
-
-  <script type="module" src="app.js?v=3.4.0"></script>
+  <script type="module" src="app.js?v=3.5.0"></script>
 </body>
 </html>
