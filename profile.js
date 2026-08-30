@@ -15,10 +15,33 @@ function make(tag, className, text) {
   return element;
 }
 
+function secondaryLevel(className = '') {
+  const value = String(className).trim();
+  const match = value.match(/(?:sec(?:ondary)?\s*)?([123])|^([123])/i);
+  const level = match?.[1] || match?.[2];
+  return level ? `sec${level}` : 'other';
+}
+
+function buildLevelFilter() {
+  const wrap = make('div', 'staff-filter-bar');
+  const label = make('label', 'field staff-filter-field');
+  label.append(make('span', '', 'Player level'));
+  const select = document.createElement('select');
+  select.innerHTML = `
+    <option value="all">All players</option>
+    <option value="sec1">Sec 1</option>
+    <option value="sec2">Sec 2</option>
+    <option value="sec3">Sec 3</option>
+  `;
+  label.append(select);
+  wrap.append(label);
+  return { wrap, select };
+}
+
 export async function ensureUserProfile(user, role) {
   const reference = doc(db, 'users', user.uid);
   const snapshot = await getDoc(reference);
-  const expectedRole = role === 'coach' ? 'teacher' : 'student';
+  const expectedRole = role === 'player' ? 'student' : role;
 
   if (!snapshot.exists()) {
     const profile = {
@@ -33,7 +56,6 @@ export async function ensureUserProfile(user, role) {
     await setDoc(reference, profile);
     return profile;
   }
-
   return { id: snapshot.id, ...snapshot.data() };
 }
 
@@ -55,7 +77,6 @@ async function saveOwnProfile({ user, profile, name, className }) {
 
 async function renderPlayerProfile({ container, user, profile, onMessage, onProfileUpdated }) {
   container.replaceChildren();
-
   const heading = make('div', 'section-heading player-sessions-heading');
   const copy = make('div');
   copy.append(
@@ -73,49 +94,36 @@ async function renderPlayerProfile({ container, user, profile, onMessage, onProf
   const nameField = make('label', 'field');
   nameField.append(make('span', '', 'Name'));
   const nameInput = document.createElement('input');
-  nameInput.type = 'text';
-  nameInput.maxLength = 80;
-  nameInput.required = true;
+  nameInput.type = 'text'; nameInput.maxLength = 80; nameInput.required = true;
   nameInput.value = profile.name || user.displayName || '';
   nameField.append(nameInput);
 
   const classField = make('label', 'field');
   classField.append(make('span', '', 'Class'));
   const classInput = document.createElement('input');
-  classInput.type = 'text';
-  classInput.maxLength = 30;
-  classInput.placeholder = 'e.g. 2R3';
+  classInput.type = 'text'; classInput.maxLength = 30; classInput.placeholder = 'e.g. 2R3';
   classInput.value = profile.className || '';
   classField.append(classInput);
 
   const emailField = make('label', 'field field-wide');
   emailField.append(make('span', '', 'Google account'));
   const emailInput = document.createElement('input');
-  emailInput.type = 'email';
-  emailInput.value = user.email || '';
-  emailInput.disabled = true;
+  emailInput.type = 'email'; emailInput.value = user.email || ''; emailInput.disabled = true;
   emailField.append(emailInput);
 
   const actions = make('div', 'profile-actions field-wide');
   const saveButton = make('button', 'primary-btn', 'Save profile');
   saveButton.type = 'submit';
   actions.append(saveButton);
-
   form.append(nameField, classField, emailField, actions);
   card.append(form);
   container.append(card);
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    saveButton.disabled = true;
-    saveButton.textContent = 'Saving…';
+    saveButton.disabled = true; saveButton.textContent = 'Saving…';
     try {
-      await saveOwnProfile({
-        user,
-        profile,
-        name: nameInput.value,
-        className: classInput.value
-      });
+      await saveOwnProfile({ user, profile, name: nameInput.value, className: classInput.value });
       const updated = await getUserProfile(user.uid);
       onMessage('Profile updated.', 'success');
       if (onProfileUpdated) onProfileUpdated(updated);
@@ -123,21 +131,19 @@ async function renderPlayerProfile({ container, user, profile, onMessage, onProf
       console.error('Could not update profile:', error);
       onMessage(error?.message || 'Could not update profile.', 'error');
     } finally {
-      saveButton.disabled = false;
-      saveButton.textContent = 'Save profile';
+      saveButton.disabled = false; saveButton.textContent = 'Save profile';
     }
   });
 }
 
-async function renderCoachPlayers({ container }) {
+async function renderStaffPlayers({ container }) {
   container.replaceChildren();
-
   const heading = make('div', 'section-heading');
   const copy = make('div');
   copy.append(
     make('span', 'section-kicker', 'PLAYERS'),
     make('h2', '', 'Player directory'),
-    make('p', '', 'Players appear here after signing in to the V3 hub.')
+    make('p', '', 'Filter players by secondary level. Levels are detected automatically from their class.')
   );
   heading.append(copy);
   container.append(heading);
@@ -153,27 +159,45 @@ async function renderCoachPlayers({ container }) {
     return;
   }
 
+  const { wrap, select } = buildLevelFilter();
+  const count = make('span', 'filter-result-count');
+  wrap.append(count);
+  container.append(wrap);
+
   const grid = make('div', 'player-directory');
-  for (const player of players) {
-    const card = make('article', 'player-card');
-    const avatar = make('div', 'player-avatar', (player.name || '?').trim().charAt(0).toUpperCase() || '?');
-    const body = make('div');
-    body.append(
-      make('strong', '', player.name || 'Player'),
-      make('span', '', player.className || 'Class not set'),
-      make('small', '', player.email || '')
-    );
-    card.append(avatar, body);
-    grid.append(card);
-  }
   container.append(grid);
+
+  function draw() {
+    grid.replaceChildren();
+    const filtered = players.filter(player => select.value === 'all' || secondaryLevel(player.className) === select.value);
+    count.textContent = `${filtered.length} player${filtered.length === 1 ? '' : 's'}`;
+    if (!filtered.length) {
+      grid.append(make('div', 'empty-card', 'No players found for this level.'));
+      return;
+    }
+    for (const player of filtered) {
+      const card = make('article', 'player-card');
+      const avatar = make('div', 'player-avatar', (player.name || '?').trim().charAt(0).toUpperCase() || '?');
+      const body = make('div');
+      body.append(
+        make('strong', '', player.name || 'Player'),
+        make('span', '', player.className || 'Class not set'),
+        make('small', '', player.email || '')
+      );
+      card.append(avatar, body);
+      grid.append(card);
+    }
+  }
+
+  select.addEventListener('change', draw);
+  draw();
 }
 
 export async function renderProfile({ container, role, user, profile, onMessage, onProfileUpdated }) {
   container.replaceChildren(make('div', 'loading-card', 'Loading profile…'));
   try {
-    if (role === 'coach') {
-      await renderCoachPlayers({ container });
+    if (role === 'teacher' || role === 'coach') {
+      await renderStaffPlayers({ container });
     } else {
       await renderPlayerProfile({ container, user, profile, onMessage, onProfileUpdated });
     }
