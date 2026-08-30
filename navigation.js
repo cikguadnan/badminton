@@ -7,6 +7,7 @@ const pageMap = {
   training: 'trainingSection',
   attendance: 'attendanceSection',
   reflections: 'reflectionsSection',
+  team: 'teamMonitorSection',
   profile: 'profileSection'
 };
 
@@ -18,6 +19,7 @@ function showPage(name, { updateHash = false } = {}) {
   const safeName = pageMap[name] ? name : 'home';
   if (!isMobile()) {
     if (updateHash && safeName !== 'home') document.getElementById(pageMap[safeName])?.scrollIntoView({ behavior: 'smooth' });
+    else if (updateHash && safeName === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
 
@@ -35,12 +37,12 @@ function showPage(name, { updateHash = false } = {}) {
 
 function pageFromHash(hash) {
   const id = (hash || '').replace('#', '');
-  return Object.entries(pageMap).find(([,value]) => value === id)?.[0] || (id === 'home' ? 'home' : null);
+  return Object.entries(pageMap).find(([, value]) => value === id)?.[0] || (id === 'home' ? 'home' : null);
 }
 
 export function initAppNavigation(role) {
   const profileLabels = document.querySelectorAll('[data-profile-nav-label]');
-  profileLabels.forEach(node => node.textContent = role === 'coach' ? 'Players' : 'Profile');
+  profileLabels.forEach(node => node.textContent = role === 'teacher' || role === 'coach' ? 'Players' : 'Profile');
 
   if (!initialized) {
     initialized = true;
