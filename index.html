@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="styles.css?v=3.3" />
   <link rel="stylesheet" href="attendance.css?v=3.2" />
   <link rel="stylesheet" href="v3-final.css?v=3.3" />
+  <link rel="stylesheet" href="dashboard-polish.css?v=3.4" />
 </head>
 <body>
   <main id="app">
@@ -63,23 +64,30 @@
 
       <div class="dashboard-content">
         <div id="dashboardMessage" class="dashboard-message success" hidden></div>
-        <div class="dashboard-badge" id="dashboardRole">Player</div>
-        <h1 id="dashboardTitle">Player Dashboard</h1>
-        <p id="dashboardCopy">Loading your training hub.</p>
 
-        <div class="identity-card">
-          <div class="avatar-circle" id="avatarCircle">✓</div>
-          <div>
-            <h2 id="dashboardName">WRSS Badminton Member</h2>
-            <p id="dashboardEmail"></p>
+        <div class="dashboard-hero">
+          <div class="dashboard-hero-copy">
+            <div class="dashboard-badge" id="dashboardRole">Player</div>
+            <h1 id="dashboardTitle">Player Dashboard</h1>
+            <p id="dashboardCopy">Loading your training hub.</p>
+          </div>
+
+          <div class="identity-card compact-identity">
+            <div class="avatar-circle" id="avatarCircle">✓</div>
+            <div>
+              <h2 id="dashboardName">WRSS Badminton Member</h2>
+              <p id="dashboardEmail"></p>
+            </div>
           </div>
         </div>
+
+        <section id="overviewSection" class="overview-section" aria-live="polite"></section>
 
         <nav class="dashboard-nav" aria-label="Dashboard sections">
           <a href="#trainingSection">Training</a>
           <a href="#attendanceSection">Attendance</a>
           <a href="#reflectionsSection">Reflections</a>
-          <a href="#profileSection">Profile / Players</a>
+          <a href="#profileSection"><span id="profileNavLabel">Profile</span></a>
         </nav>
 
         <section id="trainingSection" class="training-section dashboard-feature" aria-live="polite"></section>
@@ -87,11 +95,11 @@
         <section id="reflectionsSection" class="training-section dashboard-feature" aria-live="polite"></section>
         <section id="profileSection" class="training-section dashboard-feature" aria-live="polite"></section>
 
-        <footer class="dashboard-footer">WRSS Badminton Training Hub • V3 complete workflow</footer>
+        <footer class="dashboard-footer">WRSS Badminton Training Hub • V3</footer>
       </div>
     </section>
   </main>
 
-  <script type="module" src="app.js?v=3.3.0"></script>
+  <script type="module" src="app.js?v=3.4.0"></script>
 </body>
 </html>
