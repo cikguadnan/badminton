@@ -3,10 +3,24 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function verifiedEmail() { return signedIn() && request.auth.token.email != null && request.auth.token.email_verified == true; }
-    function isTeacher() {
+    function staffExists() {
       return verifiedEmail()
-        && exists(/databases/$(database)/documents/teachers/$(request.auth.token.email))
-        && get(/databases/$(database)/documents/teachers/$(request.auth.token.email)).data.active != false;
+        && exists(/databases/$(database)/documents/teachers/$(request.auth.token.email));
+    }
+    function staffData() {
+      return get(/databases/$(database)/documents/teachers/$(request.auth.token.email)).data;
+    }
+    function isActiveStaff() {
+      return staffExists() && staffData().active != false;
+    }
+    function isCoach() {
+      return isActiveStaff() && staffData().role == 'coach';
+    }
+    function isTeacher() {
+      return isActiveStaff() && staffData().role != 'coach';
+    }
+    function isStaff() {
+      return isTeacher() || isCoach();
     }
     function sessionExists(sessionId) { return exists(/databases/$(database)/documents/trainingSessions/$(sessionId)); }
     function sessionData(sessionId) { return get(/databases/$(database)/documents/trainingSessions/$(sessionId)).data; }
@@ -25,25 +39,32 @@ service cloud.firestore {
     }
 
     match /teachers/{teacherEmail} {
-      allow read: if verifiedEmail() && (request.auth.token.email == teacherEmail || isTeacher());
+      allow read: if verifiedEmail() && (request.auth.token.email == teacherEmail || isStaff());
       allow create, update, delete: if false;
     }
+
     match /trainingSessions/{sessionId} {
       allow read: if signedIn();
       allow create, update, delete: if isTeacher();
     }
+
     match /users/{userId} {
-      allow read: if signedIn() && (request.auth.uid == userId || isTeacher());
+      allow read: if signedIn() && (request.auth.uid == userId || isStaff());
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
-        && ((isTeacher() && request.resource.data.role == 'teacher') || (!isTeacher() && request.resource.data.role == 'student'));
+        && (
+          (!isStaff() && request.resource.data.role == 'student')
+          || (isTeacher() && request.resource.data.role == 'teacher')
+          || (isCoach() && request.resource.data.role == 'coach')
+        );
       allow update: if signedIn() && request.auth.uid == userId
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.email == resource.data.email
         && request.resource.data.role == resource.data.role;
       allow delete: if false;
     }
+
     match /attendance/{attendanceId} {
       allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher());
       allow create: if signedIn()
@@ -65,8 +86,9 @@ service cloud.firestore {
         && (request.resource.data.status == 'absent' || (request.resource.data.status == 'attended' && sessionStarted(resource.data.sessionId)));
       allow delete: if isTeacher();
     }
+
     match /reflections/{reflectionId} {
-      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher());
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isStaff());
       allow create: if signedIn()
         && request.resource.data.studentUid == request.auth.uid
         && request.resource.data.studentEmail == request.auth.token.email
@@ -87,15 +109,17 @@ service cloud.firestore {
         && sessionStillOpen(resource.data.sessionId);
       allow delete: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher());
     }
+
     match /comments/{commentId} {
-      allow read: if signedIn() && (isTeacher() || ownsReflection(resource.data.reflectionId));
-      allow create: if isTeacher()
+      allow read: if signedIn() && (isStaff() || ownsReflection(resource.data.reflectionId));
+      allow create: if isStaff()
         && request.resource.data.teacherUid == request.auth.uid
         && request.resource.data.comment is string
         && request.resource.data.comment.size() > 0
         && request.resource.data.comment.size() <= 800;
-      allow update, delete: if isTeacher();
+      allow update, delete: if isStaff();
     }
+
     match /{document=**} { allow read, write: if false; }
   }
 }
