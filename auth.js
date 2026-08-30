@@ -34,8 +34,11 @@ export async function logout() {
 
 export async function getUserRole(user) {
   if (!user?.email) return 'player';
-  const teacherRef = doc(db, 'teachers', user.email.toLowerCase());
-  const snapshot = await getDoc(teacherRef);
-  if (snapshot.exists() && snapshot.data()?.active !== false) return 'coach';
-  return 'player';
+  const staffRef = doc(db, 'teachers', user.email.toLowerCase());
+  const snapshot = await getDoc(staffRef);
+  if (!snapshot.exists() || snapshot.data()?.active === false) return 'player';
+
+  // Backward compatible: existing staff records without a role remain Teachers.
+  const staffRole = String(snapshot.data()?.role || '').toLowerCase();
+  return staffRole === 'coach' ? 'coach' : 'teacher';
 }
