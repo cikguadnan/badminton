@@ -3,25 +3,48 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function verifiedEmail() { return signedIn() && request.auth.token.email != null && request.auth.token.email_verified == true; }
-    function staffExists() {
-      return verifiedEmail()
-        && exists(/databases/$(database)/documents/teachers/$(request.auth.token.email));
+
+    function userProfileExists() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
-    function staffData() {
+    function userProfileData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function currentRole() {
+      return userProfileData().role;
+    }
+
+    function legacyStaffExists() {
+      return verifiedEmail() && exists(/databases/$(database)/documents/teachers/$(request.auth.token.email));
+    }
+    function legacyStaffData() {
       return get(/databases/$(database)/documents/teachers/$(request.auth.token.email)).data;
     }
-    function isActiveStaff() {
-      return staffExists() && staffData().active != false;
+    function legacyActive() {
+      return legacyStaffExists() && legacyStaffData().active != false;
+    }
+    function legacyTeacher() {
+      return legacyActive() && legacyStaffData().role != 'coach';
+    }
+    function legacyCoach() {
+      return legacyActive() && legacyStaffData().role == 'coach';
+    }
+
+    function isTeacher() {
+      return (userProfileExists() && currentRole() == 'teacher')
+        || (!userProfileExists() && legacyTeacher());
     }
     function isCoach() {
-      return isActiveStaff() && staffData().role == 'coach';
+      return (userProfileExists() && currentRole() == 'coach')
+        || (!userProfileExists() && legacyCoach());
     }
-    function isTeacher() {
-      return isActiveStaff() && staffData().role != 'coach';
+    function isCaptain() {
+      return userProfileExists() && currentRole() == 'captain';
     }
     function isStaff() {
       return isTeacher() || isCoach();
     }
+
     function sessionExists(sessionId) { return exists(/databases/$(database)/documents/trainingSessions/$(sessionId)); }
     function sessionData(sessionId) { return get(/databases/$(database)/documents/trainingSessions/$(sessionId)).data; }
     function sessionStillOpen(sessionId) {
@@ -49,24 +72,37 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if signedIn() && (request.auth.uid == userId || isStaff());
+      allow read: if signedIn() && (request.auth.uid == userId || isStaff() || isCaptain());
+
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
         && (
-          (!isStaff() && request.resource.data.role == 'student')
-          || (isTeacher() && request.resource.data.role == 'teacher')
-          || (isCoach() && request.resource.data.role == 'coach')
+          (!legacyActive() && request.resource.data.role == 'student')
+          || (legacyTeacher() && request.resource.data.role == 'teacher')
+          || (legacyCoach() && request.resource.data.role == 'coach')
         );
+
+      // Members may edit their own profile details but never their own role.
       allow update: if signedIn() && request.auth.uid == userId
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.email == resource.data.email
         && request.resource.data.role == resource.data.role;
+
+      // Teachers manage roles for every other member. Their own Teacher role is protected.
+      allow update: if isTeacher()
+        && userId != request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt'])
+        && request.resource.data.role in ['student', 'captain', 'coach', 'teacher'];
+
       allow delete: if false;
     }
 
     match /attendance/{attendanceId} {
-      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher());
+      // Captains can monitor completion status; only Teachers manage staff-side attendance.
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher() || isCaptain());
       allow create: if signedIn()
         && request.resource.data.studentUid == request.auth.uid
         && request.resource.data.studentEmail == request.auth.token.email
@@ -88,7 +124,8 @@ service cloud.firestore {
     }
 
     match /reflections/{reflectionId} {
-      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isStaff());
+      // Captains use this read permission only for completion monitoring in the app.
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isStaff() || isCaptain());
       allow create: if signedIn()
         && request.resource.data.studentUid == request.auth.uid
         && request.resource.data.studentEmail == request.auth.token.email
