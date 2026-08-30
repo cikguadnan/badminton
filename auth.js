@@ -32,13 +32,25 @@ export async function logout() {
   await signOut(auth);
 }
 
+function normalizeRole(value) {
+  const role = String(value || '').toLowerCase();
+  if (role === 'teacher') return 'teacher';
+  if (role === 'coach') return 'coach';
+  if (role === 'captain') return 'captain';
+  return 'player';
+}
+
 export async function getUserRole(user) {
-  if (!user?.email) return 'player';
+  if (!user?.email || !user?.uid) return 'player';
+
+  // V3.8: users/{uid}.role is the live role source once a profile exists.
+  const userProfile = await getDoc(doc(db, 'users', user.uid));
+  if (userProfile.exists()) return normalizeRole(userProfile.data()?.role);
+
+  // Backward compatibility for staff who have not yet created a V3 user profile.
   const staffRef = doc(db, 'teachers', user.email.toLowerCase());
   const snapshot = await getDoc(staffRef);
   if (!snapshot.exists() || snapshot.data()?.active === false) return 'player';
-
-  // Backward compatible: existing staff records without a role remain Teachers.
   const staffRole = String(snapshot.data()?.role || '').toLowerCase();
   return staffRole === 'coach' ? 'coach' : 'teacher';
 }
