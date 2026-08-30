@@ -1,4 +1,5 @@
 import { loginWithGoogle, completeRedirectLogin, watchAuth, logout, getUserRole } from './auth.js';
+import { renderTrainingSessions } from './sessions.js';
 
 const loginView = document.getElementById('loginView');
 const dashboardView = document.getElementById('dashboardView');
@@ -10,8 +11,12 @@ const dashboardEmail = document.getElementById('dashboardEmail');
 const dashboardRole = document.getElementById('dashboardRole');
 const dashboardTitle = document.getElementById('dashboardTitle');
 const dashboardCopy = document.getElementById('dashboardCopy');
+const trainingSection = document.getElementById('trainingSection');
+const dashboardMessage = document.getElementById('dashboardMessage');
 
 let handlingUser = false;
+let activeUser = null;
+let activeRole = null;
 
 function showStatus(message, type = 'info') {
   statusBox.textContent = message;
@@ -25,25 +30,29 @@ function hideStatus() {
   statusBox.className = 'status-box info';
 }
 
+function showDashboardMessage(message, type = 'success') {
+  dashboardMessage.textContent = message;
+  dashboardMessage.className = `dashboard-message ${type}`;
+  dashboardMessage.hidden = false;
+  window.clearTimeout(showDashboardMessage.timer);
+  showDashboardMessage.timer = window.setTimeout(() => {
+    dashboardMessage.hidden = true;
+  }, 3200);
+}
+
 function friendlyError(error) {
   const code = error?.code || '';
-  if (code === 'auth/unauthorized-domain') {
-    return 'This GitHub Pages domain is not authorised in Firebase Authentication.';
-  }
-  if (code === 'auth/operation-not-allowed') {
-    return 'Google sign-in is not enabled in Firebase Authentication.';
-  }
-  if (code === 'auth/network-request-failed') {
-    return 'Could not reach Firebase. Check your internet connection and try again.';
-  }
-  if (code === 'permission-denied') {
-    return 'Google sign-in worked, but Firestore denied access while checking your role.';
-  }
+  if (code === 'auth/unauthorized-domain') return 'This GitHub Pages domain is not authorised in Firebase Authentication.';
+  if (code === 'auth/operation-not-allowed') return 'Google sign-in is not enabled in Firebase Authentication.';
+  if (code === 'auth/network-request-failed') return 'Could not reach Firebase. Check your internet connection and try again.';
+  if (code === 'permission-denied') return 'Google sign-in worked, but Firestore denied access while checking your role.';
   return error?.message || 'Something went wrong while signing in.';
 }
 
 function renderSignedOut() {
   handlingUser = false;
+  activeUser = null;
+  activeRole = null;
   dashboardView.hidden = true;
   loginView.hidden = false;
   googleButton.disabled = false;
@@ -53,23 +62,33 @@ function renderSignedOut() {
 async function renderSignedIn(user) {
   if (handlingUser) return;
   handlingUser = true;
-  showStatus('Google sign-in successful. Checking your account…');
+  showStatus('Google sign-in successful. Loading your training hub…');
 
   try {
     const role = await getUserRole(user);
+    activeUser = user;
+    activeRole = role;
+
     dashboardName.textContent = user.displayName || 'WRSS Badminton Member';
     dashboardEmail.textContent = user.email || '';
     dashboardRole.textContent = role === 'coach' ? 'Coach' : 'Player';
     dashboardTitle.textContent = role === 'coach' ? 'Coach Dashboard' : 'Player Dashboard';
     dashboardCopy.textContent = role === 'coach'
-      ? 'V3 login is working. Training management will be added next.'
-      : 'V3 login is working. Your training sessions will be added next.';
+      ? 'Create and manage the official badminton training schedule.'
+      : 'Check the official training sessions created by your coach.';
 
     hideStatus();
     loginView.hidden = true;
     dashboardView.hidden = false;
+
+    await renderTrainingSessions({
+      container: trainingSection,
+      role,
+      user,
+      onMessage: showDashboardMessage
+    });
   } catch (error) {
-    console.error('Role check failed:', error);
+    console.error('Dashboard load failed:', error);
     handlingUser = false;
     showStatus(friendlyError(error), 'error');
   }
@@ -113,7 +132,7 @@ try {
 
 watchAuth(user => {
   if (user) {
-    renderSignedIn(user);
+    if (!activeUser || activeUser.uid !== user.uid || !activeRole) renderSignedIn(user);
   } else {
     renderSignedOut();
   }
