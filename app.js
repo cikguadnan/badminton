@@ -2,7 +2,7 @@ import { loginWithGoogle, completeRedirectLogin, watchAuth, logout, getUserRole 
 import { renderTrainingSessions } from './sessions.js';
 import { renderAttendance } from './attendance.js';
 import { ensureUserProfile, renderProfile } from './profile.js';
-import { renderReflections } from './reflections.js';
+import { renderReflections } from './staff-reflections.js';
 import { renderOverview } from './overview.js';
 import { initAppNavigation } from './navigation.js';
 
@@ -84,21 +84,26 @@ function renderSignedOut() {
 }
 
 async function loadDashboardSections({ role, user, profile }) {
-  const shared = { role, user, onMessage: showDashboardMessage };
   const jobs = [];
 
   if (role === 'coach') {
     renderCoachOverview();
+  } else if (role === 'teacher') {
+    jobs.push(renderOverview({ container: overviewSection, role: 'coach', user, profile }));
   } else {
-    jobs.push(renderOverview({ container: overviewSection, role: role === 'teacher' ? 'coach' : role, user, profile }));
+    jobs.push(renderOverview({ container: overviewSection, role, user, profile }));
   }
 
-  if (role !== 'coach') {
-    jobs.push(renderTrainingSessions({ container: trainingSection, ...shared }));
-    jobs.push(renderAttendance({ container: attendanceSection, ...shared }));
+  if (role === 'teacher') {
+    // Existing schedule/attendance modules use "coach" as their legacy full-staff mode.
+    jobs.push(renderTrainingSessions({ container: trainingSection, role: 'coach', user, onMessage: showDashboardMessage }));
+    jobs.push(renderAttendance({ container: attendanceSection, role: 'coach', user, onMessage: showDashboardMessage }));
+  } else if (role === 'player') {
+    jobs.push(renderTrainingSessions({ container: trainingSection, role, user, onMessage: showDashboardMessage }));
+    jobs.push(renderAttendance({ container: attendanceSection, role, user, onMessage: showDashboardMessage }));
   }
 
-  jobs.push(renderReflections({ container: reflectionsSection, ...shared }));
+  jobs.push(renderReflections({ container: reflectionsSection, role, user, onMessage: showDashboardMessage }));
   jobs.push(renderProfile({
     container: profileSection,
     role,
