@@ -4,50 +4,85 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#06120e" />
-  <meta name="description" content="WRSS Badminton Training Hub — attendance, reflection and coach feedback." />
-  <meta property="og:title" content="WRSS Badminton Training Hub" />
-  <meta property="og:description" content="Attendance, reflection and coach feedback for WRSS Badminton." />
-  <meta name="twitter:title" content="WRSS Badminton Training Hub" />
+  <meta name="description" content="WRSS Badminton Training Hub" />
   <title>WRSS Badminton Training Hub</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
-  <link rel="stylesheet" href="styles.css" />
-  <style>
-    :root{--login-green:#7fd321;--login-green-soft:#9be64a;--login-bg:#020807;--login-panel:#07140f;--login-line:rgba(255,255,255,.09);--login-muted:#9bada6}
-    .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:34px 22px;background:radial-gradient(circle at 50% 28%,rgba(66,143,55,.28),transparent 31%),radial-gradient(circle at 50% 82%,rgba(24,74,50,.14),transparent 35%),linear-gradient(180deg,#06130f 0%,#020807 100%)}
-    .login-screen::before,.login-screen::after{content:"";position:absolute;width:50vw;height:210px;bottom:0;opacity:.32;pointer-events:none;background:radial-gradient(circle,rgba(127,211,33,.95) 0 1.2px,transparent 1.7px) 0 0/14px 14px;mask-image:linear-gradient(to top,black,transparent 90%);-webkit-mask-image:linear-gradient(to top,black,transparent 90%);transform:skewY(-6deg)}
-    .login-screen::before{left:-7vw}.login-screen::after{right:-7vw;transform:skewY(6deg) scaleX(-1)}.login-visual{display:none!important}
-    .login-panel{width:min(100%,980px);min-height:auto;padding:0;border:0;background:transparent;box-shadow:none;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;z-index:2}
-    .hub-brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:36px}.hub-logo{width:76px;height:76px;display:grid;place-items:center;filter:drop-shadow(0 12px 22px rgba(93,197,45,.15))}.hub-logo svg{width:100%;height:100%;display:block}
-    .hub-title{font-size:24px;line-height:1;font-weight:700;letter-spacing:.045em;color:#fff}.hub-subtitle{margin-top:4px;color:var(--login-green);font-size:17px;line-height:1;font-weight:650}
-    .login-copy{margin:0 0 26px;display:flex;flex-direction:column;align-items:center}.login-copy .eyebrow{display:none}.login-copy h1{margin:0;font-size:clamp(44px,4.7vw,66px);line-height:1.02;letter-spacing:-.035em;max-width:800px;font-weight:700}.login-copy h1 span{color:var(--login-green)}.login-copy p{margin:24px auto 0;max-width:680px;color:#c0cec9;font-size:15px;line-height:1.7}
-    #configWarning{width:min(100%,620px);margin:0 0 12px;text-align:left}.google-btn{width:min(100%,620px);min-height:72px;border-radius:16px;font-size:17px;font-weight:800;box-shadow:0 16px 40px rgba(0,0,0,.28);transition:transform .18s ease,box-shadow .18s ease}.google-btn:hover{transform:translateY(-1px);box-shadow:0 20px 48px rgba(0,0,0,.34)}.google-g{font-size:24px}
-    .login-features{width:min(100%,860px);margin-top:30px;display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:0}.login-features>div{min-width:0;display:grid;grid-template-columns:48px 1fr;grid-template-rows:auto auto;column-gap:14px;text-align:left;padding:14px 28px;border-bottom:0;border-right:1px solid var(--login-line)}.login-features>div:first-child{padding-left:0}.login-features>div:last-child{border-right:0;padding-right:0}.login-features>div>span{grid-row:1/3;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:rgba(127,211,33,.09);color:var(--login-green);border:1px solid rgba(127,211,33,.06);font-size:19px;font-weight:900}.login-features strong{font-size:15px;line-height:1.25;color:#fff;align-self:end}.login-features small{margin-top:5px;color:var(--login-muted);font-size:11px;line-height:1.5}
-    .login-note{margin-top:24px;color:#a1b1ab;font-size:11px;line-height:1.5;display:flex;align-items:center;gap:8px}.login-note::before{content:"✓";width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:var(--login-green);border:1px solid rgba(127,211,33,.25);background:rgba(127,211,33,.08);font-weight:900}
-    @media(max-width:760px){.login-screen{min-height:100svh;padding:28px 20px 34px;align-items:flex-start}.login-panel{width:100%;padding:0;min-height:auto}.hub-brand{margin-bottom:32px}.hub-logo{width:62px;height:62px}.hub-title{font-size:20px}.hub-subtitle{font-size:15px}.login-copy{margin:0 0 22px}.login-copy h1{font-size:42px;line-height:1}.login-copy p{margin-top:18px;font-size:13px;line-height:1.6}.google-btn{min-height:60px;font-size:15px}.login-features{width:100%;grid-template-columns:1fr;margin-top:24px}.login-features>div,.login-features>div:first-child,.login-features>div:last-child{padding:12px 0;border-right:0;border-bottom:1px solid var(--login-line);grid-template-columns:40px 1fr;column-gap:12px}.login-features>div:last-child{border-bottom:0}.login-features>div>span{width:40px;height:40px;font-size:16px}.login-features strong{font-size:13px}.login-features small{font-size:10px}.login-note{margin-top:18px;font-size:10px}.login-screen::before,.login-screen::after{opacity:.18}}
-  </style>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
-  <div id="app">
+  <main id="app">
     <section id="loginView" class="login-screen">
-      <div class="login-visual" aria-hidden="true"></div>
       <div class="login-panel">
         <div class="hub-brand">
           <div class="hub-logo" aria-hidden="true">
-            <svg viewBox="0 0 120 120" role="img"><defs><linearGradient id="arcG" x1="0" x2="1"><stop offset="0" stop-color="#8ee52c"/><stop offset="1" stop-color="#56b61d"/></linearGradient></defs><path d="M29 88a44 44 0 1 1 65-61" fill="none" stroke="url(#arcG)" stroke-width="6" stroke-linecap="round"/><path d="M92 31c5 12 5 27-2 39" fill="none" stroke="#6cc822" stroke-width="5" stroke-linecap="round"/><g transform="rotate(42 67 55)"><path d="M55 44 76 15l8 7-20 27z" fill="#fff"/><path d="M61 49 86 25l6 8-25 22z" fill="#f2f4f3"/><path d="M67 54 93 38l4 9-25 14z" fill="#fff"/><path d="M73 59 99 52l1 9-25 5z" fill="#eff2f1"/><ellipse cx="57" cy="61" rx="9" ry="8" fill="#f8faf9"/><path d="M53 54c5 0 10 2 14 6" stroke="#70ca22" stroke-width="5" fill="none"/><path d="M47 66 22 91" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M44 62 15 82" stroke="#7fd321" stroke-width="4" stroke-linecap="round"/><path d="M50 70 30 99" stroke="#78cf25" stroke-width="3" stroke-linecap="round"/></g></svg>
+            <svg viewBox="0 0 120 120" role="img">
+              <path d="M29 88a44 44 0 1 1 65-61" fill="none" stroke="#7fd321" stroke-width="6" stroke-linecap="round"/>
+              <g transform="rotate(42 67 55)">
+                <path d="M55 44 76 15l8 7-20 27z" fill="#fff"/>
+                <path d="M61 49 86 25l6 8-25 22z" fill="#f2f4f3"/>
+                <path d="M67 54 93 38l4 9-25 14z" fill="#fff"/>
+                <path d="M73 59 99 52l1 9-25 5z" fill="#eff2f1"/>
+                <ellipse cx="57" cy="61" rx="9" ry="8" fill="#f8faf9"/>
+                <path d="M53 54c5 0 10 2 14 6" stroke="#70ca22" stroke-width="5" fill="none"/>
+              </g>
+            </svg>
           </div>
           <div class="hub-title">WRSS BADMINTON</div>
           <div class="hub-subtitle">Training Hub</div>
         </div>
-        <div class="login-copy"><h1>Your training.<br><span>Your progress.</span></h1><p>Sign in to check your training sessions, record attendance, complete reflections and read feedback from your coach.</p></div>
-        <div id="configWarning" class="notice hidden"></div>
-        <button id="googleSignInBtn" class="google-btn" type="button"><span class="google-g">G</span><span>Continue with Google</span></button>
-        <div class="login-features"><div><span>✓</span><strong>Training attendance</strong><small>Respond only to official training sessions.</small></div><div><span>✎</span><strong>7-day reflection window</strong><small>Complete your reflection after training, when you're ready.</small></div><div><span>▤</span><strong>Coach feedback</strong><small>Read comments and keep improving over time.</small></div></div>
-        <div class="login-note">Use the Google account registered with your team.</div>
+
+        <div class="login-copy">
+          <h1>Your training.<br><span>Your progress.</span></h1>
+          <p>Sign in to access your badminton training hub.</p>
+        </div>
+
+        <div id="statusBox" class="status-box info" hidden></div>
+
+        <button id="googleSignInBtn" class="google-btn" type="button">
+          <span class="google-g">G</span>
+          <span>Continue with Google</span>
+        </button>
+
+        <div class="login-note">V3 clean rebuild • Login foundation</div>
       </div>
     </section>
-    <section id="authenticatedApp" class="app-layout hidden"><aside class="sidebar"><div class="brand-lockup compact"><div class="brand-icon">🏸</div><div><div class="brand-name">BADMINTON <span>JOURNAL</span></div><div class="brand-tagline">Train. Reflect. Improve.</div></div></div><nav id="desktopNav" class="side-nav" aria-label="Main navigation"></nav><div class="sidebar-quote"><div class="quote-mark">“</div><p>Discipline today.<br><strong>Champion tomorrow.</strong></p></div></aside><div class="app-main"><header class="topbar"><div class="topbar-date" id="topDate"></div><div class="user-chip"><img id="topAvatar" class="avatar hidden" alt="Profile" /><div id="topAvatarFallback" class="avatar avatar-fallback">P</div><div class="user-meta"><div id="topUserName" class="user-name">Player</div><div id="topUserRole" class="user-role">Player</div></div><button id="signOutBtn" class="icon-btn" type="button" aria-label="Sign out" title="Sign out">↪</button></div></header><main id="mainContent" class="content"></main></div><nav id="bottomNav" class="bottom-nav" aria-label="Mobile navigation"></nav></section>
-  </div>
-  <div id="modalRoot"></div><div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-  <script type="module" src="auth-bootstrap.js?v=1"></script>
+
+    <section id="dashboardView" class="dashboard-shell" hidden>
+      <header class="dashboard-topbar">
+        <div class="mini-brand">
+          <span class="brand-dot">🏸</span>
+          <div>
+            <strong>WRSS Badminton</strong>
+            <small>Training Hub V3</small>
+          </div>
+        </div>
+        <button id="signOutBtn" class="secondary-btn" type="button">Sign out</button>
+      </header>
+
+      <div class="dashboard-content">
+        <div class="dashboard-badge" id="dashboardRole">Player</div>
+        <h1 id="dashboardTitle">Player Dashboard</h1>
+        <p id="dashboardCopy">V3 login is working.</p>
+
+        <div class="identity-card">
+          <div class="avatar-circle" id="avatarCircle">✓</div>
+          <div>
+            <h2 id="dashboardName">WRSS Badminton Member</h2>
+            <p id="dashboardEmail"></p>
+          </div>
+        </div>
+
+        <div class="success-card">
+          <div class="success-icon">✓</div>
+          <div>
+            <strong>Authentication foundation working</strong>
+            <p>Google sign-in and coach/player detection are running on the new V3 codebase.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js?v=3.0.0"></script>
 </body>
 </html>
