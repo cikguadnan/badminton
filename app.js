@@ -4,6 +4,7 @@ import { renderAttendance } from './staff-attendance.js';
 import { ensureUserProfile, renderProfile } from './profile.js';
 import { renderReflections } from './staff-reflections.js';
 import { renderOverview } from './overview.js';
+import { renderTeamMonitor } from './team-monitor.js';
 import { initAppNavigation } from './navigation.js';
 
 const loginView = document.getElementById('loginView');
@@ -20,6 +21,7 @@ const overviewSection = document.getElementById('overviewSection');
 const trainingSection = document.getElementById('trainingSection');
 const attendanceSection = document.getElementById('attendanceSection');
 const reflectionsSection = document.getElementById('reflectionsSection');
+const teamMonitorSection = document.getElementById('teamMonitorSection');
 const profileSection = document.getElementById('profileSection');
 const dashboardMessage = document.getElementById('dashboardMessage');
 const profileNavLabel = document.getElementById('profileNavLabel');
@@ -35,11 +37,16 @@ function hideStatus() { statusBox.hidden = true; statusBox.textContent = ''; sta
 function showDashboardMessage(message, type = 'success') { dashboardMessage.textContent = message; dashboardMessage.className = `dashboard-message ${type}`; dashboardMessage.hidden = false; window.clearTimeout(showDashboardMessage.timer); showDashboardMessage.timer = window.setTimeout(() => { dashboardMessage.hidden = true; }, 3400); }
 function friendlyError(error) { const code = error?.code || ''; if (code === 'auth/unauthorized-domain') return 'This GitHub Pages domain is not authorised in Firebase Authentication.'; if (code === 'auth/operation-not-allowed') return 'Google sign-in is not enabled in Firebase Authentication.'; if (code === 'auth/network-request-failed') return 'Could not reach Firebase. Check your internet connection and try again.'; if (code === 'permission-denied') return 'Firebase denied access to part of the training hub. Check the Firestore rules.'; return error?.message || 'Something went wrong while loading the training hub.'; }
 
-function roleLabel(role) { return role === 'teacher' ? 'Teacher' : role === 'coach' ? 'Coach' : 'Player'; }
+function roleLabel(role) {
+  return role === 'teacher' ? 'Teacher' : role === 'coach' ? 'Coach' : role === 'captain' ? 'Captain' : 'Player';
+}
+
+function isPlayerRole(role) { return role === 'player' || role === 'captain'; }
+
 function setIdentity(profile, user, role) {
   const displayName = profile?.name || user.displayName || 'WRSS Badminton Member';
   dashboardName.textContent = displayName;
-  dashboardEmail.textContent = role === 'player'
+  dashboardEmail.textContent = isPlayerRole(role)
     ? `${profile?.className ? `${profile.className} • ` : ''}${user.email || ''}`
     : `${user.email || ''} • ${roleLabel(role)} access`;
   avatarCircle.textContent = displayName.trim().charAt(0).toUpperCase() || '✓';
@@ -47,11 +54,19 @@ function setIdentity(profile, user, role) {
 
 function setRoleVisibility(role) {
   document.body.classList.toggle('coach-mode', role === 'coach');
-  const restricted = role === 'coach';
-  trainingSection.hidden = restricted;
-  attendanceSection.hidden = restricted;
+  document.body.classList.toggle('captain-mode', role === 'captain');
+  document.body.classList.toggle('teacher-mode', role === 'teacher');
+
+  const coachRestricted = role === 'coach';
+  trainingSection.hidden = coachRestricted;
+  attendanceSection.hidden = coachRestricted;
+  teamMonitorSection.hidden = role !== 'captain';
+
   document.querySelectorAll('a[href="#trainingSection"],a[href="#attendanceSection"],.bottom-nav-btn[data-page="training"],.bottom-nav-btn[data-page="attendance"]').forEach(el => {
-    el.hidden = restricted;
+    el.hidden = coachRestricted;
+  });
+  document.querySelectorAll('a[href="#teamMonitorSection"],.bottom-nav-btn[data-page="team"]').forEach(el => {
+    el.hidden = role !== 'captain';
   });
 }
 
@@ -76,7 +91,7 @@ function renderSignedOut() {
   activeUser = null;
   activeRole = null;
   activeProfile = null;
-  document.body.classList.remove('coach-mode');
+  document.body.classList.remove('coach-mode', 'captain-mode', 'teacher-mode');
   dashboardView.hidden = true;
   loginView.hidden = false;
   googleButton.disabled = false;
@@ -91,19 +106,20 @@ async function loadDashboardSections({ role, user, profile }) {
   } else if (role === 'teacher') {
     jobs.push(renderOverview({ container: overviewSection, role: 'coach', user, profile }));
   } else {
-    jobs.push(renderOverview({ container: overviewSection, role, user, profile }));
+    jobs.push(renderOverview({ container: overviewSection, role: 'player', user, profile }));
   }
 
   if (role === 'teacher') {
-    // Existing schedule module uses "coach" as its legacy full-staff mode.
     jobs.push(renderTrainingSessions({ container: trainingSection, role: 'coach', user, onMessage: showDashboardMessage }));
     jobs.push(renderAttendance({ container: attendanceSection, role: 'teacher', user, onMessage: showDashboardMessage }));
-  } else if (role === 'player') {
-    jobs.push(renderTrainingSessions({ container: trainingSection, role, user, onMessage: showDashboardMessage }));
-    jobs.push(renderAttendance({ container: attendanceSection, role, user, onMessage: showDashboardMessage }));
+  } else if (isPlayerRole(role)) {
+    jobs.push(renderTrainingSessions({ container: trainingSection, role: 'player', user, onMessage: showDashboardMessage }));
+    jobs.push(renderAttendance({ container: attendanceSection, role: 'player', user, onMessage: showDashboardMessage }));
   }
 
-  jobs.push(renderReflections({ container: reflectionsSection, role, user, onMessage: showDashboardMessage }));
+  if (role === 'captain') jobs.push(renderTeamMonitor({ container: teamMonitorSection }));
+
+  jobs.push(renderReflections({ container: reflectionsSection, role: isPlayerRole(role) ? 'player' : role, user, onMessage: showDashboardMessage }));
   jobs.push(renderProfile({
     container: profileSection,
     role,
@@ -113,7 +129,7 @@ async function loadDashboardSections({ role, user, profile }) {
     onProfileUpdated: async updated => {
       activeProfile = updated;
       setIdentity(updated, user, role);
-      if (role === 'player') await renderOverview({ container: overviewSection, role, user, profile: updated });
+      if (isPlayerRole(role)) await renderOverview({ container: overviewSection, role: 'player', user, profile: updated });
     }
   }));
 
@@ -136,13 +152,15 @@ async function renderSignedIn(user) {
     setIdentity(profile, user, role);
     setRoleVisibility(role);
     dashboardRole.textContent = roleLabel(role);
-    dashboardTitle.textContent = role === 'teacher' ? 'Teacher Dashboard' : role === 'coach' ? 'Coach Dashboard' : 'Player Dashboard';
+    dashboardTitle.textContent = role === 'teacher' ? 'Teacher Dashboard' : role === 'coach' ? 'Coach Dashboard' : role === 'captain' ? 'Captain Dashboard' : 'Player Dashboard';
     dashboardCopy.textContent = role === 'teacher'
-      ? 'Manage training, attendance, reflections and player development.'
+      ? 'Manage training, attendance, reflections, players and member roles.'
       : role === 'coach'
         ? 'Review player reflections and give targeted coaching feedback.'
-        : 'See what is next, check in for training and keep your reflections up to date.';
-    profileNavLabel.textContent = role === 'player' ? 'Profile' : 'Players';
+        : role === 'captain'
+          ? 'Train like every player, and help the team stay on top of attendance and reflections.'
+          : 'See what is next, check in for training and keep your reflections up to date.';
+    profileNavLabel.textContent = role === 'player' || role === 'captain' ? 'Profile' : 'Players';
 
     hideStatus();
     loginView.hidden = true;
