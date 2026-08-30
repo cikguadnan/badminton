@@ -1,6 +1,8 @@
 import { loginWithGoogle, completeRedirectLogin, watchAuth, logout, getUserRole } from './auth.js';
 import { renderTrainingSessions } from './sessions.js';
 import { renderAttendance } from './attendance.js';
+import { ensureUserProfile, renderProfile } from './profile.js';
+import { renderReflections } from './reflections.js';
 
 const loginView = document.getElementById('loginView');
 const dashboardView = document.getElementById('dashboardView');
@@ -14,11 +16,14 @@ const dashboardTitle = document.getElementById('dashboardTitle');
 const dashboardCopy = document.getElementById('dashboardCopy');
 const trainingSection = document.getElementById('trainingSection');
 const attendanceSection = document.getElementById('attendanceSection');
+const reflectionsSection = document.getElementById('reflectionsSection');
+const profileSection = document.getElementById('profileSection');
 const dashboardMessage = document.getElementById('dashboardMessage');
 
 let handlingUser = false;
 let activeUser = null;
 let activeRole = null;
+let activeProfile = null;
 
 function showStatus(message, type = 'info') {
   statusBox.textContent = message;
@@ -39,7 +44,7 @@ function showDashboardMessage(message, type = 'success') {
   window.clearTimeout(showDashboardMessage.timer);
   showDashboardMessage.timer = window.setTimeout(() => {
     dashboardMessage.hidden = true;
-  }, 3200);
+  }, 3400);
 }
 
 function friendlyError(error) {
@@ -47,14 +52,15 @@ function friendlyError(error) {
   if (code === 'auth/unauthorized-domain') return 'This GitHub Pages domain is not authorised in Firebase Authentication.';
   if (code === 'auth/operation-not-allowed') return 'Google sign-in is not enabled in Firebase Authentication.';
   if (code === 'auth/network-request-failed') return 'Could not reach Firebase. Check your internet connection and try again.';
-  if (code === 'permission-denied') return 'Google sign-in worked, but Firestore denied access while checking your role.';
-  return error?.message || 'Something went wrong while signing in.';
+  if (code === 'permission-denied') return 'Firebase denied access to part of the training hub. Check the Firestore rules.';
+  return error?.message || 'Something went wrong while loading the training hub.';
 }
 
 function renderSignedOut() {
   handlingUser = false;
   activeUser = null;
   activeRole = null;
+  activeProfile = null;
   dashboardView.hidden = true;
   loginView.hidden = false;
   googleButton.disabled = false;
@@ -68,16 +74,18 @@ async function renderSignedIn(user) {
 
   try {
     const role = await getUserRole(user);
+    const profile = await ensureUserProfile(user, role);
     activeUser = user;
     activeRole = role;
+    activeProfile = profile;
 
-    dashboardName.textContent = user.displayName || 'WRSS Badminton Member';
+    dashboardName.textContent = profile.name || user.displayName || 'WRSS Badminton Member';
     dashboardEmail.textContent = user.email || '';
     dashboardRole.textContent = role === 'coach' ? 'Coach' : 'Player';
     dashboardTitle.textContent = role === 'coach' ? 'Coach Dashboard' : 'Player Dashboard';
     dashboardCopy.textContent = role === 'coach'
-      ? 'Create and manage the official badminton training schedule.'
-      : 'Check the official training sessions created by your coach.';
+      ? 'Manage training, attendance, reflections and player development.'
+      : 'Check in, reflect on your training and review your coach feedback.';
 
     hideStatus();
     loginView.hidden = true;
@@ -95,6 +103,25 @@ async function renderSignedIn(user) {
       role,
       user,
       onMessage: showDashboardMessage
+    });
+
+    await renderReflections({
+      container: reflectionsSection,
+      role,
+      user,
+      onMessage: showDashboardMessage
+    });
+
+    await renderProfile({
+      container: profileSection,
+      role,
+      user,
+      profile,
+      onMessage: showDashboardMessage,
+      onProfileUpdated: updated => {
+        activeProfile = updated;
+        dashboardName.textContent = updated?.name || user.displayName || 'WRSS Badminton Member';
+      }
     });
   } catch (error) {
     console.error('Dashboard load failed:', error);
