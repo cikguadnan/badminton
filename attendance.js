@@ -10,6 +10,9 @@ import {
 import { db } from './firebase.js';
 import { getTrainingSessions } from './sessions.js';
 
+const PAGE_SIZE = 3;
+const ATTENDANCE_LEAD_DAYS = 7;
+
 function make(tag, className, text) {
   const element = document.createElement(tag);
   if (className) element.className = className;
@@ -28,13 +31,37 @@ function formatDate(dateString) {
   }).format(date);
 }
 
-function sessionState(session) {
-  const now = new Date();
+function sessionTimes(session) {
   const opensAt = session.opensAt?.toDate?.() || new Date(`${session.trainingDate}T00:00:00+08:00`);
   const closesAt = session.closesAt?.toDate?.() || new Date(`${session.dueDate}T23:59:59+08:00`);
+  const attendanceOpensAt = new Date(opensAt.getTime() - ATTENDANCE_LEAD_DAYS * 24 * 60 * 60 * 1000);
+  return { opensAt, closesAt, attendanceOpensAt };
+}
+
+function sessionState(session) {
+  const now = new Date();
+  const { opensAt, closesAt } = sessionTimes(session);
   if (now < opensAt) return 'upcoming';
   if (now > closesAt) return 'closed';
   return 'open';
+}
+
+function attendanceWindowState(session) {
+  const now = new Date();
+  const { attendanceOpensAt, opensAt, closesAt } = sessionTimes(session);
+  if (now < attendanceOpensAt) return 'locked';
+  if (now > closesAt) return 'closed';
+  if (now < opensAt) return 'pretraining';
+  return 'active';
+}
+
+function attendanceOpenDate(session) {
+  const { attendanceOpensAt } = sessionTimes(session);
+  return new Intl.DateTimeFormat('en-SG', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short'
+  }).format(attendanceOpensAt);
 }
 
 function attendanceDocId(uid, sessionId) {
@@ -47,6 +74,10 @@ async function getMyAttendance(uid) {
 }
 
 async function saveAttendance({ user, session, status, reason = '', details = '' }) {
+  if (attendanceWindowState(session) === 'locked') {
+    throw new Error(`Attendance opens 7 days before training (${attendanceOpenDate(session)}).`);
+  }
+
   const reference = doc(db, 'attendance', attendanceDocId(user.uid, session.id));
   await setDoc(reference, {
     studentUid: user.uid,
@@ -73,6 +104,8 @@ function buildPlayerAttendanceCard({ session, record, user, refresh, onMessage }
   );
 
   const state = sessionState(session);
+  const windowState = attendanceWindowState(session);
+
   let statusClass = 'pending';
   let statusText = 'No response';
   if (record?.status === 'attended') {
@@ -81,6 +114,9 @@ function buildPlayerAttendanceCard({ session, record, user, refresh, onMessage }
   } else if (record?.status === 'absent') {
     statusClass = 'absent';
     statusText = 'Absent';
+  } else if (windowState === 'locked') {
+    statusClass = 'closed';
+    statusText = 'Not open yet';
   } else if (state === 'closed') {
     statusClass = 'closed';
     statusText = 'Closed';
@@ -96,7 +132,17 @@ function buildPlayerAttendanceCard({ session, record, user, refresh, onMessage }
   }
 
   if (record?.status === 'attended') {
-    card.append(make('div', 'attendance-note success', 'Attendance recorded. Reflection will be added in the next V3 step.'));
+    card.append(make('div', 'attendance-note success', 'Attendance recorded. Your reflection is available in Journal.'));
+    return card;
+  }
+
+  if (windowState === 'locked') {
+    const note = make('div', 'attendance-note attendance-locked');
+    note.append(
+      make('strong', '', `Attendance opens ${attendanceOpenDate(session)}`),
+      make('span', '', 'You can report an absence from 7 days before training. Check-in becomes available on the training day.')
+    );
+    card.append(note);
     return card;
   }
 
@@ -107,7 +153,7 @@ function buildPlayerAttendanceCard({ session, record, user, refresh, onMessage }
 
   const actions = make('div', 'attendance-actions');
 
-  if (state === 'open') {
+  if (windowState === 'active') {
     const attendedButton = make('button', 'primary-btn', 'I attended');
     attendedButton.type = 'button';
     attendedButton.addEventListener('click', async () => {
@@ -125,7 +171,11 @@ function buildPlayerAttendanceCard({ session, record, user, refresh, onMessage }
     actions.append(attendedButton);
   }
 
-  const absentButton = make('button', 'danger-outline-btn', state === 'upcoming' ? 'Report absence' : 'I was absent');
+  const absentButton = make(
+    'button',
+    'danger-outline-btn',
+    windowState === 'pretraining' ? 'Report absence' : 'I was absent'
+  );
   absentButton.type = 'button';
 
   const absenceForm = make('form', 'absence-inline-form');
@@ -160,7 +210,6 @@ function buildPlayerAttendanceCard({ session, record, user, refresh, onMessage }
   const submitButton = make('button', 'danger-btn', 'Submit absence');
   submitButton.type = 'submit';
   formActions.append(cancelButton, submitButton);
-
   absenceForm.append(reasonLabel, detailsLabel, formActions);
 
   absentButton.addEventListener('click', () => {
@@ -203,6 +252,76 @@ function buildPlayerAttendanceCard({ session, record, user, refresh, onMessage }
   return card;
 }
 
+function renderPagedPlayerAttendance({ container, sessions, records, user, onMessage }) {
+  const recordMap = new Map(records.map(record => [record.sessionId, record]));
+  const list = make('div', 'attendance-list paged-list');
+  container.append(list);
+
+  if (!sessions.length) {
+    list.append(make('div', 'empty-card', 'No official training sessions yet.'));
+    return;
+  }
+
+  const now = Date.now();
+  const sorted = [...sessions].sort((a, b) => {
+    const aTime = new Date(`${a.trainingDate}T00:00:00+08:00`).getTime();
+    const bTime = new Date(`${b.trainingDate}T00:00:00+08:00`).getTime();
+    const aDistance = aTime >= now ? aTime - now : Number.MAX_SAFE_INTEGER / 2 + (now - aTime);
+    const bDistance = bTime >= now ? bTime - now : Number.MAX_SAFE_INTEGER / 2 + (now - bTime);
+    return aDistance - bDistance;
+  });
+
+  let page = 0;
+  const pager = make('div', 'list-pager');
+  const refresh = async () => renderPlayerAttendance({ container, user, onMessage });
+
+  const draw = () => {
+    list.replaceChildren();
+    const start = page * PAGE_SIZE;
+    sorted.slice(start, start + PAGE_SIZE).forEach(session => {
+      list.append(buildPlayerAttendanceCard({
+        session,
+        record: recordMap.get(session.id),
+        user,
+        refresh,
+        onMessage
+      }));
+    });
+
+    pager.replaceChildren();
+    if (sorted.length <= PAGE_SIZE) return;
+
+    const prev = make('button', 'pager-btn', '← Previous');
+    prev.type = 'button';
+    prev.disabled = page === 0;
+
+    const count = make(
+      'span',
+      'pager-count',
+      `${start + 1}–${Math.min(start + PAGE_SIZE, sorted.length)} of ${sorted.length}`
+    );
+
+    const next = make('button', 'pager-btn', 'Next →');
+    next.type = 'button';
+    next.disabled = start + PAGE_SIZE >= sorted.length;
+
+    prev.addEventListener('click', () => {
+      page -= 1;
+      draw();
+      list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    next.addEventListener('click', () => {
+      page += 1;
+      draw();
+      list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    pager.append(prev, count, next);
+  };
+
+  draw();
+  container.append(pager);
+}
+
 async function renderPlayerAttendance({ container, user, onMessage }) {
   const [sessions, records] = await Promise.all([
     getTrainingSessions(),
@@ -211,38 +330,17 @@ async function renderPlayerAttendance({ container, user, onMessage }) {
 
   container.replaceChildren();
 
-  const heading = make('div', 'section-heading player-sessions-heading');
+  const heading = make('div', 'section-heading player-sessions-heading compact-section-heading');
   const copy = make('div');
   copy.append(
     make('span', 'section-kicker', 'ATTENDANCE'),
     make('h2', '', 'My attendance'),
-    make('p', '', 'Mark your attendance only for official training sessions. Upcoming sessions allow early absence reporting.')
+    make('p', '', 'Attendance opens 7 days before each training. Three sessions are shown at a time.')
   );
   heading.append(copy);
   container.append(heading);
 
-  const list = make('div', 'attendance-list');
-  const recordMap = new Map(records.map(record => [record.sessionId, record]));
-
-  const refresh = async () => {
-    await renderPlayerAttendance({ container, user, onMessage });
-  };
-
-  if (!sessions.length) {
-    list.append(make('div', 'empty-card', 'No official training sessions yet.'));
-  } else {
-    for (const session of sessions) {
-      list.append(buildPlayerAttendanceCard({
-        session,
-        record: recordMap.get(session.id),
-        user,
-        refresh,
-        onMessage
-      }));
-    }
-  }
-
-  container.append(list);
+  renderPagedPlayerAttendance({ container, sessions, records, user, onMessage });
 }
 
 async function getCoachAttendanceData() {
@@ -349,7 +447,7 @@ async function renderCoachAttendance({ container }) {
   const { sessionList, attendance, players } = await getCoachAttendanceData();
   container.replaceChildren();
 
-  const heading = make('div', 'section-heading');
+  const heading = make('div', 'section-heading compact-section-heading');
   const copy = make('div');
   copy.append(
     make('span', 'section-kicker', 'ATTENDANCE'),
@@ -367,12 +465,14 @@ async function renderCoachAttendance({ container }) {
   const filter = make('label', 'field attendance-session-filter');
   filter.append(make('span', '', 'Training session'));
   const select = document.createElement('select');
+
   for (const session of [...sessionList].sort((a, b) => b.trainingDate.localeCompare(a.trainingDate))) {
     const option = document.createElement('option');
     option.value = session.id;
     option.textContent = `${formatDate(session.trainingDate)} — ${session.title || 'Badminton Training'}`;
     select.append(option);
   }
+
   filter.append(select);
   container.append(filter);
 
