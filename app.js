@@ -36,82 +36,9 @@ async function navigate(v){state.currentView=v;setNav();if(state.isTeacher){if(v
 
 async function isTeacherAccount(user){const email=(user.email||'').toLowerCase();if(!email)return false;const s=await getDoc(doc(db,'teachers',email));return s.exists()&&s.data().active!==false;}
 async function ensureUserProfile(user,teacher){const r=doc(db,'users',user.uid),s=await getDoc(r),role=teacher?'teacher':'student';if(!s.exists())await setDoc(r,{uid:user.uid,email:user.email||'',name:user.displayName||'',photoURL:user.photoURL||'',role,className:'',createdAt:serverTimestamp(),lastLoginAt:serverTimestamp()});else await updateDoc(r,{name:s.data().name||user.displayName||'',photoURL:user.photoURL||s.data().photoURL||'',lastLoginAt:serverTimestamp()});const fresh=await getDoc(r);return{id:fresh.id,...fresh.data()};}
-function showLoginMessage(message,type='info'){
-  configWarning.textContent=message;
-  configWarning.className=`notice ${type==='error'?'error':''}`;
-  configWarning.classList.remove('hidden');
-}
-function clearLoginMessage(){
-  configWarning.textContent='';
-  configWarning.className='notice hidden';
-}
-function friendlyAuthError(e){
-  const code=e?.code||'';
-  if(code==='auth/unauthorized-domain') return 'This GitHub Pages domain is not authorised in Firebase Authentication. Add cikguadnan.github.io under Authentication → Settings → Authorized domains.';
-  if(code==='auth/popup-blocked') return 'Your browser blocked the Google sign-in window. Allow pop-ups for this site and try again.';
-  if(code==='auth/network-request-failed') return 'Google sign-in could not reach Firebase. Check your internet connection and try again.';
-  if(code==='auth/operation-not-allowed') return 'Google sign-in is not enabled in Firebase Authentication.';
-  return e?.message||'Google sign-in failed. Please try again.';
-}
-async function startSession(user){
-  state.user=user;
-  loginView.classList.add('hidden');
-  authApp.classList.remove('hidden');
-  main.innerHTML='<div class="empty">Google sign-in successful. Loading your account…</div>';
-  try{
-    state.isTeacher=await isTeacherAccount(user);
-    state.profile=await ensureUserProfile(user,state.isTeacher);
-    setHeader();
-    state.currentView=state.isTeacher?'dashboard':'home';
-    setNav();
-    await navigate(state.currentView);
-    if(!state.isTeacher&&!state.profile.className)openProfileSetup();
-  }catch(e){
-    console.error('Account load failed:',e);
-    const msg=e?.code==='permission-denied'||String(e?.message||'').toLowerCase().includes('permission')
-      ? 'Google sign-in worked, but Firestore blocked access. Please check that the V2.2 firestore.rules were published.'
-      : `Google sign-in worked, but the app could not load your account: ${e?.message||'Unknown error'}`;
-    main.innerHTML=`<section class="card"><div class="section-kicker">SIGN-IN DIAGNOSTIC</div><h2>Account could not load</h2><p class="lead">${escapeHtml(msg)}</p><button id="diagnosticSignOut" class="secondary-btn" type="button">Sign out and try again</button></section>`;
-    const b=$('#diagnosticSignOut'); if(b)b.addEventListener('click',()=>signOut(auth));
-    throw e;
-  }
-}
-async function signInGoogle(){
-  if(!auth||!provider){showLoginMessage('Firebase Authentication is not ready. Please refresh the page.','error');return;}
-  clearLoginMessage();
-  const old=googleBtn.innerHTML;
-  googleBtn.disabled=true;
-  googleBtn.innerHTML='<span class="google-g">G</span><span>Opening Google…</span>';
-  try{
-    await signInWithPopup(auth,provider);
-  }catch(e){
-    console.error('Google sign-in error:',e);
-    if(['auth/popup-blocked','auth/cancelled-popup-request'].includes(e.code)){
-      showLoginMessage('Pop-up blocked. Redirecting to Google sign-in…');
-      try{await signInWithRedirect(auth,provider);return;}catch(re){console.error('Redirect sign-in error:',re);showLoginMessage(friendlyAuthError(re),'error');}
-    }else if(e.code!=='auth/popup-closed-by-user'){
-      showLoginMessage(friendlyAuthError(e),'error');
-    }
-  }finally{
-    googleBtn.disabled=false;
-    googleBtn.innerHTML=old;
-  }
-}
-if(configReady){
-  googleBtn.addEventListener('click',signInGoogle);
-  $('#signOutBtn').addEventListener('click',()=>signOut(auth));
-  getRedirectResult(auth).catch(e=>{console.error('Redirect result error:',e);showLoginMessage(friendlyAuthError(e),'error');});
-  onAuthStateChanged(auth,async u=>{
-    if(u){
-      try{await startSession(u);}catch(e){console.error(e);}
-    }else{
-      Object.assign(state,{user:null,profile:null,isTeacher:false,reflections:[],comments:[],users:[],attendance:[],sessions:[]});
-      authApp.classList.add('hidden');
-      loginView.classList.remove('hidden');
-      modalRoot.innerHTML='';
-    }
-  });
-}
+async function startSession(user){state.user=user;state.isTeacher=await isTeacherAccount(user);state.profile=await ensureUserProfile(user,state.isTeacher);loginView.classList.add('hidden');authApp.classList.remove('hidden');setHeader();state.currentView=state.isTeacher?'dashboard':'home';setNav();await navigate(state.currentView);if(!state.isTeacher&&!state.profile.className)openProfileSetup();}
+async function signInGoogle(){try{await signInWithPopup(auth,provider);}catch(e){if(['auth/popup-blocked','auth/cancelled-popup-request'].includes(e.code))return signInWithRedirect(auth,provider);if(e.code!=='auth/popup-closed-by-user')showToast(`Sign-in failed: ${e.message}`);}}
+if(configReady){googleBtn.addEventListener('click',signInGoogle);$('#signOutBtn').addEventListener('click',()=>signOut(auth));getRedirectResult(auth).catch(()=>{});onAuthStateChanged(auth,async u=>{if(u){try{await startSession(u);}catch(e){console.error(e);showToast('Could not load your account. Check Firebase rules.');}}else{Object.assign(state,{user:null,profile:null,isTeacher:false,reflections:[],comments:[],users:[],attendance:[],sessions:[]});authApp.classList.add('hidden');loginView.classList.remove('hidden');modalRoot.innerHTML='';}});}
 
 async function loadSessions(){const s=await getDocs(query(collection(db,'trainingSessions'),orderBy('trainingDate','desc'),limit(120)));state.sessions=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.active!==false);return state.sessions;}
 async function loadMyReflections(){const s=await getDocs(query(collection(db,'reflections'),where('studentUid','==',state.user.uid)));state.reflections=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(b.trainingDate||'').localeCompare(String(a.trainingDate||'')));return state.reflections;}
