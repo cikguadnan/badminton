@@ -1,0 +1,161 @@
+/* V3.6 compact schedule + lower-scroll UX */
+:root{
+  --card-radius:16px;
+}
+html{scroll-behavior:smooth}
+body{letter-spacing:.002em}
+button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid rgba(140,221,56,.28);
+  outline-offset:2px;
+}
+.hub-logo{width:72px;height:72px;border-radius:18px;overflow:hidden;box-shadow:0 12px 28px rgba(0,0,0,.18)}
+.hub-logo img,.brand-logo img{width:100%;height:100%;display:block;object-fit:cover}
+.brand-dot.brand-logo{padding:0;overflow:hidden;background:transparent;border-color:rgba(140,221,56,.24)}
+.compact-signout{padding:9px 13px}
+.dashboard-content{max-width:1060px}
+.compact-section-heading{margin-bottom:14px}
+.compact-section-heading h2{font-size:28px}
+.compact-section-heading p{max-width:620px}
+.training-card,.attendance-card,.reflection-card,.coach-reflection-card{
+  transition:transform .15s ease,border-color .15s ease,background .15s ease;
+}
+@media(hover:hover){
+  .training-card:hover,.attendance-card:hover,.reflection-card:hover,.coach-reflection-card:hover{
+    transform:translateY(-1px);
+    border-color:rgba(140,221,56,.23)!important;
+  }
+}
+.bulk-calendar-shell.compact-calendar{
+  width:min(100%,620px);
+  padding:16px;
+  border-radius:18px;
+  margin:0 0 22px;
+}
+.compact-calendar .bulk-calendar-top{margin-bottom:12px}
+.compact-calendar .bulk-calendar-top h3{font-size:20px;margin:3px 0 2px}
+.calendar-helper{margin:0;color:#aebdb7;font-size:11px;line-height:1.4}
+.compact-calendar .calendar-nav{gap:6px}
+.compact-calendar .calendar-month{min-width:112px;font-size:13px}
+.compact-calendar .calendar-nav-btn{width:32px;height:32px;border-radius:9px;font-size:20px}
+.compact-calendar .calendar-weekdays,.compact-calendar .calendar-grid{gap:4px}
+.compact-calendar .calendar-weekdays{margin-bottom:4px}
+.compact-calendar .calendar-weekdays span{font-size:9px}
+.compact-calendar .calendar-day,.compact-calendar .calendar-blank{
+  aspect-ratio:auto;
+  height:36px;
+}
+.compact-calendar .calendar-day{
+  border-radius:8px;
+  font-size:12px;
+  font-weight:800;
+}
+.compact-calendar .calendar-day.past{
+  opacity:.28;
+  cursor:not-allowed;
+  background:rgba(255,255,255,.025);
+}
+.compact-calendar .bulk-session-form{
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:14px;
+  padding-top:14px;
+}
+.compact-calendar .calendar-selection-summary{
+  grid-column:1;
+  align-self:center;
+  min-height:0;
+}
+.compact-calendar .bulk-save-btn{
+  grid-column:2;
+  grid-row:auto;
+  min-width:0;
+  align-self:center;
+  justify-self:end;
+  min-height:40px;
+}
+.scheduled-heading{margin:22px 0 12px}
+.paged-list{scroll-margin-top:120px}
+.list-pager{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:13px;
+  min-height:38px;
+}
+.list-pager:empty{display:none}
+.pager-btn{
+  border:1px solid rgba(255,255,255,.16);
+  background:#172c23;
+  color:#edf5f1;
+  border-radius:10px;
+  padding:9px 12px;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+.pager-btn:disabled{opacity:.35;cursor:default!important}
+.pager-count{
+  color:#aebdb7;
+  font-size:11px;
+  font-weight:700;
+  min-width:72px;
+  text-align:center;
+}
+.attendance-note.attendance-locked{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  background:rgba(98,174,255,.07);
+  border-color:rgba(98,174,255,.18);
+}
+.attendance-locked strong{color:#cde5ff;font-size:12px}
+.attendance-locked span{color:#b6c4be;font-size:11px;line-height:1.5}
+.training-card{min-height:98px}
+.training-date{box-shadow:inset 0 0 0 1px rgba(140,221,56,.03)}
+.section-kicker{letter-spacing:.14em}
+.primary-btn{box-shadow:0 8px 18px rgba(140,221,56,.08)}
+.bottom-nav-btn{min-height:54px}
+@media(max-width:800px){
+  .hub-logo{width:62px;height:62px}
+  .dashboard-topbar{box-shadow:0 5px 18px rgba(0,0,0,.16)}
+  .dashboard-content{padding-top:18px}
+  .compact-section-heading h2{font-size:24px}
+  .compact-calendar.bulk-calendar-shell{
+    width:100%;
+    padding:12px;
+    border-radius:15px;
+    margin:0 0 18px;
+  }
+  .compact-calendar .bulk-calendar-top{
+    flex-direction:row;
+    align-items:center;
+    gap:8px;
+  }
+  .compact-calendar .bulk-calendar-top h3{font-size:18px}
+  .compact-calendar .calendar-helper{display:none}
+  .compact-calendar .calendar-nav{width:auto}
+  .compact-calendar .calendar-month{min-width:94px}
+  .compact-calendar .calendar-day,.compact-calendar .calendar-blank{height:34px}
+  .compact-calendar .bulk-session-form{grid-template-columns:1fr}
+  .compact-calendar .calendar-selection-summary,
+  .compact-calendar .bulk-save-btn{grid-column:auto;width:100%;justify-self:stretch}
+  .list-pager{
+    justify-content:space-between;
+    position:sticky;
+    bottom:82px;
+    z-index:5;
+    padding:7px;
+    margin:12px -3px 0;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:13px;
+    background:rgba(18,39,31,.94);
+    backdrop-filter:blur(12px);
+  }
+  .pager-btn{min-height:38px;padding:9px 11px}
+  .training-card{min-height:0}
+  .training-card-body h3{font-size:16px}
+  .training-deadline{font-size:10px}
+  .attendance-note{line-height:1.5}
+}
