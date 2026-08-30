@@ -3,6 +3,7 @@ import { renderTrainingSessions } from './sessions.js';
 import { renderAttendance } from './attendance.js';
 import { ensureUserProfile, renderProfile } from './profile.js';
 import { renderReflections } from './reflections.js';
+import { renderOverview } from './overview.js';
 
 const loginView = document.getElementById('loginView');
 const dashboardView = document.getElementById('dashboardView');
@@ -14,11 +15,14 @@ const dashboardEmail = document.getElementById('dashboardEmail');
 const dashboardRole = document.getElementById('dashboardRole');
 const dashboardTitle = document.getElementById('dashboardTitle');
 const dashboardCopy = document.getElementById('dashboardCopy');
+const overviewSection = document.getElementById('overviewSection');
 const trainingSection = document.getElementById('trainingSection');
 const attendanceSection = document.getElementById('attendanceSection');
 const reflectionsSection = document.getElementById('reflectionsSection');
 const profileSection = document.getElementById('profileSection');
 const dashboardMessage = document.getElementById('dashboardMessage');
+const profileNavLabel = document.getElementById('profileNavLabel');
+const avatarCircle = document.getElementById('avatarCircle');
 
 let handlingUser = false;
 let activeUser = null;
@@ -56,6 +60,15 @@ function friendlyError(error) {
   return error?.message || 'Something went wrong while loading the training hub.';
 }
 
+function setIdentity(profile, user, role) {
+  const displayName = profile?.name || user.displayName || 'WRSS Badminton Member';
+  dashboardName.textContent = displayName;
+  dashboardEmail.textContent = role === 'coach'
+    ? `${user.email || ''} • Coach access`
+    : `${profile?.className ? `${profile.className} • ` : ''}${user.email || ''}`;
+  avatarCircle.textContent = displayName.trim().charAt(0).toUpperCase() || '✓';
+}
+
 function renderSignedOut() {
   handlingUser = false;
   activeUser = null;
@@ -65,6 +78,31 @@ function renderSignedOut() {
   loginView.hidden = false;
   googleButton.disabled = false;
   googleButton.innerHTML = '<span class="google-g">G</span><span>Continue with Google</span>';
+}
+
+async function loadDashboardSections({ role, user, profile }) {
+  const shared = { role, user, onMessage: showDashboardMessage };
+  const results = await Promise.allSettled([
+    renderOverview({ container: overviewSection, role, user, profile }),
+    renderTrainingSessions({ container: trainingSection, ...shared }),
+    renderAttendance({ container: attendanceSection, ...shared }),
+    renderReflections({ container: reflectionsSection, ...shared }),
+    renderProfile({
+      container: profileSection,
+      role,
+      user,
+      profile,
+      onMessage: showDashboardMessage,
+      onProfileUpdated: async updated => {
+        activeProfile = updated;
+        setIdentity(updated, user, role);
+        await renderOverview({ container: overviewSection, role, user, profile: updated });
+      }
+    })
+  ]);
+
+  const failed = results.filter(result => result.status === 'rejected');
+  if (failed.length) console.warn(`${failed.length} dashboard section(s) did not load.`, failed);
 }
 
 async function renderSignedIn(user) {
@@ -79,50 +117,19 @@ async function renderSignedIn(user) {
     activeRole = role;
     activeProfile = profile;
 
-    dashboardName.textContent = profile.name || user.displayName || 'WRSS Badminton Member';
-    dashboardEmail.textContent = user.email || '';
+    setIdentity(profile, user, role);
     dashboardRole.textContent = role === 'coach' ? 'Coach' : 'Player';
     dashboardTitle.textContent = role === 'coach' ? 'Coach Dashboard' : 'Player Dashboard';
     dashboardCopy.textContent = role === 'coach'
-      ? 'Manage training, attendance, reflections and player development.'
-      : 'Check in, reflect on your training and review your coach feedback.';
+      ? 'See what needs attention, then manage training, attendance and player development.'
+      : 'See what is next, check in for training and keep your reflections up to date.';
+    profileNavLabel.textContent = role === 'coach' ? 'Players' : 'Profile';
 
     hideStatus();
     loginView.hidden = true;
     dashboardView.hidden = false;
 
-    await renderTrainingSessions({
-      container: trainingSection,
-      role,
-      user,
-      onMessage: showDashboardMessage
-    });
-
-    await renderAttendance({
-      container: attendanceSection,
-      role,
-      user,
-      onMessage: showDashboardMessage
-    });
-
-    await renderReflections({
-      container: reflectionsSection,
-      role,
-      user,
-      onMessage: showDashboardMessage
-    });
-
-    await renderProfile({
-      container: profileSection,
-      role,
-      user,
-      profile,
-      onMessage: showDashboardMessage,
-      onProfileUpdated: updated => {
-        activeProfile = updated;
-        dashboardName.textContent = updated?.name || user.displayName || 'WRSS Badminton Member';
-      }
-    });
+    await loadDashboardSections({ role, user, profile });
   } catch (error) {
     console.error('Dashboard load failed:', error);
     handlingUser = false;
