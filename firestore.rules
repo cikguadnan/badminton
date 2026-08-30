@@ -144,8 +144,6 @@ service cloud.firestore {
     }
 
     match /termReflections/{termReflectionId} {
-      // A player reads the deterministic document that starts with their own UID.
-      // Staff may list/read all term reflections for progress reporting.
       allow get: if signedIn() && (isStaff() || termReflectionId.matches('^' + request.auth.uid + '_.*$'));
       allow list: if isStaff();
 
@@ -169,7 +167,11 @@ service cloud.firestore {
     }
 
     match /comments/{commentId} {
-      allow read: if signedIn() && (isStaff() || ownsReflection(resource.data.reflectionId));
+      allow read: if signedIn() && (
+        isStaff()
+        || resource.data.studentUid == request.auth.uid
+        || ownsReflection(resource.data.reflectionId)
+      );
       allow create: if isStaff()
         && request.resource.data.teacherUid == request.auth.uid
         && request.resource.data.comment is string
