@@ -34,11 +34,139 @@ function showStatus(message, type = 'info') { statusBox.textContent = message; s
 function hideStatus() { statusBox.hidden = true; statusBox.textContent = ''; statusBox.className = 'status-box info'; }
 function showDashboardMessage(message, type = 'success') { dashboardMessage.textContent = message; dashboardMessage.className = `dashboard-message ${type}`; dashboardMessage.hidden = false; window.clearTimeout(showDashboardMessage.timer); showDashboardMessage.timer = window.setTimeout(() => { dashboardMessage.hidden = true; }, 3400); }
 function friendlyError(error) { const code = error?.code || ''; if (code === 'auth/unauthorized-domain') return 'This GitHub Pages domain is not authorised in Firebase Authentication.'; if (code === 'auth/operation-not-allowed') return 'Google sign-in is not enabled in Firebase Authentication.'; if (code === 'auth/network-request-failed') return 'Could not reach Firebase. Check your internet connection and try again.'; if (code === 'permission-denied') return 'Firebase denied access to part of the training hub. Check the Firestore rules.'; return error?.message || 'Something went wrong while loading the training hub.'; }
-function setIdentity(profile, user, role) { const displayName = profile?.name || user.displayName || 'WRSS Badminton Member'; dashboardName.textContent = displayName; dashboardEmail.textContent = role === 'coach' ? `${user.email || ''} • Coach access` : `${profile?.className ? `${profile.className} • ` : ''}${user.email || ''}`; avatarCircle.textContent = displayName.trim().charAt(0).toUpperCase() || '✓'; }
-function renderSignedOut() { handlingUser = false; activeUser = null; activeRole = null; activeProfile = null; dashboardView.hidden = true; loginView.hidden = false; googleButton.disabled = false; googleButton.innerHTML = '<span class="google-g">G</span><span>Continue with Google</span>'; }
-async function loadDashboardSections({ role, user, profile }) { const shared = { role, user, onMessage: showDashboardMessage }; const results = await Promise.allSettled([renderOverview({ container: overviewSection, role, user, profile }), renderTrainingSessions({ container: trainingSection, ...shared }), renderAttendance({ container: attendanceSection, ...shared }), renderReflections({ container: reflectionsSection, ...shared }), renderProfile({ container: profileSection, role, user, profile, onMessage: showDashboardMessage, onProfileUpdated: async updated => { activeProfile = updated; setIdentity(updated, user, role); await renderOverview({ container: overviewSection, role, user, profile: updated }); } })]); const failed = results.filter(result => result.status === 'rejected'); if (failed.length) console.warn(`${failed.length} dashboard section(s) did not load.`, failed); }
-async function renderSignedIn(user) { if (handlingUser) return; handlingUser = true; showStatus('Google sign-in successful. Loading your training hub…'); try { const role = await getUserRole(user); const profile = await ensureUserProfile(user, role); activeUser = user; activeRole = role; activeProfile = profile; setIdentity(profile, user, role); dashboardRole.textContent = role === 'coach' ? 'Coach' : 'Player'; dashboardTitle.textContent = role === 'coach' ? 'Coach Dashboard' : 'Player Dashboard'; dashboardCopy.textContent = role === 'coach' ? 'See what needs attention, then manage training, attendance and player development.' : 'See what is next, check in for training and keep your reflections up to date.'; profileNavLabel.textContent = role === 'coach' ? 'Players' : 'Profile'; hideStatus(); loginView.hidden = true; dashboardView.hidden = false; initAppNavigation(role); await loadDashboardSections({ role, user, profile }); } catch (error) { console.error('Dashboard load failed:', error); handlingUser = false; showStatus(friendlyError(error), 'error'); } }
-googleButton.addEventListener('click', async () => { hideStatus(); googleButton.disabled = true; googleButton.innerHTML = '<span class="google-g">G</span><span>Opening Google…</span>'; try { const result = await loginWithGoogle(); if (result?.user) await renderSignedIn(result.user); } catch (error) { console.error('Google login failed:', error); showStatus(friendlyError(error), 'error'); } finally { googleButton.disabled = false; googleButton.innerHTML = '<span class="google-g">G</span><span>Continue with Google</span>'; } });
-signOutButton.addEventListener('click', async () => { signOutButton.disabled = true; try { await logout(); } catch (error) { console.error('Sign out failed:', error); } finally { signOutButton.disabled = false; } });
-try { const redirectResult = await completeRedirectLogin(); if (redirectResult?.user) await renderSignedIn(redirectResult.user); } catch (error) { console.error('Redirect completion failed:', error); showStatus(friendlyError(error), 'error'); }
+
+function roleLabel(role) { return role === 'teacher' ? 'Teacher' : role === 'coach' ? 'Coach' : 'Player'; }
+function setIdentity(profile, user, role) {
+  const displayName = profile?.name || user.displayName || 'WRSS Badminton Member';
+  dashboardName.textContent = displayName;
+  dashboardEmail.textContent = role === 'player'
+    ? `${profile?.className ? `${profile.className} • ` : ''}${user.email || ''}`
+    : `${user.email || ''} • ${roleLabel(role)} access`;
+  avatarCircle.textContent = displayName.trim().charAt(0).toUpperCase() || '✓';
+}
+
+function setRoleVisibility(role) {
+  document.body.classList.toggle('coach-mode', role === 'coach');
+  const restricted = role === 'coach';
+  trainingSection.hidden = restricted;
+  attendanceSection.hidden = restricted;
+  document.querySelectorAll('a[href="#trainingSection"],a[href="#attendanceSection"],.bottom-nav-btn[data-page="training"],.bottom-nav-btn[data-page="attendance"]').forEach(el => {
+    el.hidden = restricted;
+  });
+}
+
+function renderCoachOverview() {
+  overviewSection.innerHTML = `
+    <article class="next-action-card complete">
+      <div class="next-action-copy">
+        <span class="section-kicker">COACH ACCESS</span>
+        <h2>Review player development</h2>
+        <p>Read player reflections, filter by level, and leave individual feedback. Training schedules and attendance management are handled by Teacher accounts.</p>
+      </div>
+      <button class="primary-btn compact-btn" type="button" id="coachReflectionShortcut">View reflections</button>
+    </article>`;
+  overviewSection.querySelector('#coachReflectionShortcut')?.addEventListener('click', () => {
+    document.querySelector('.bottom-nav-btn[data-page="reflections"]')?.click();
+    reflectionsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+function renderSignedOut() {
+  handlingUser = false;
+  activeUser = null;
+  activeRole = null;
+  activeProfile = null;
+  document.body.classList.remove('coach-mode');
+  dashboardView.hidden = true;
+  loginView.hidden = false;
+  googleButton.disabled = false;
+  googleButton.innerHTML = '<span class="google-g">G</span><span>Continue with Google</span>';
+}
+
+async function loadDashboardSections({ role, user, profile }) {
+  const shared = { role, user, onMessage: showDashboardMessage };
+  const jobs = [];
+
+  if (role === 'coach') {
+    renderCoachOverview();
+  } else {
+    jobs.push(renderOverview({ container: overviewSection, role: role === 'teacher' ? 'coach' : role, user, profile }));
+  }
+
+  if (role !== 'coach') {
+    jobs.push(renderTrainingSessions({ container: trainingSection, ...shared }));
+    jobs.push(renderAttendance({ container: attendanceSection, ...shared }));
+  }
+
+  jobs.push(renderReflections({ container: reflectionsSection, ...shared }));
+  jobs.push(renderProfile({
+    container: profileSection,
+    role,
+    user,
+    profile,
+    onMessage: showDashboardMessage,
+    onProfileUpdated: async updated => {
+      activeProfile = updated;
+      setIdentity(updated, user, role);
+      if (role === 'player') await renderOverview({ container: overviewSection, role, user, profile: updated });
+    }
+  }));
+
+  const results = await Promise.allSettled(jobs);
+  const failed = results.filter(result => result.status === 'rejected');
+  if (failed.length) console.warn(`${failed.length} dashboard section(s) did not load.`, failed);
+}
+
+async function renderSignedIn(user) {
+  if (handlingUser) return;
+  handlingUser = true;
+  showStatus('Google sign-in successful. Loading your training hub…');
+  try {
+    const role = await getUserRole(user);
+    const profile = await ensureUserProfile(user, role);
+    activeUser = user;
+    activeRole = role;
+    activeProfile = profile;
+
+    setIdentity(profile, user, role);
+    setRoleVisibility(role);
+    dashboardRole.textContent = roleLabel(role);
+    dashboardTitle.textContent = role === 'teacher' ? 'Teacher Dashboard' : role === 'coach' ? 'Coach Dashboard' : 'Player Dashboard';
+    dashboardCopy.textContent = role === 'teacher'
+      ? 'Manage training, attendance, reflections and player development.'
+      : role === 'coach'
+        ? 'Review player reflections and give targeted coaching feedback.'
+        : 'See what is next, check in for training and keep your reflections up to date.';
+    profileNavLabel.textContent = role === 'player' ? 'Profile' : 'Players';
+
+    hideStatus();
+    loginView.hidden = true;
+    dashboardView.hidden = false;
+    initAppNavigation(role);
+    await loadDashboardSections({ role, user, profile });
+  } catch (error) {
+    console.error('Dashboard load failed:', error);
+    handlingUser = false;
+    showStatus(friendlyError(error), 'error');
+  }
+}
+
+googleButton.addEventListener('click', async () => {
+  hideStatus();
+  googleButton.disabled = true;
+  googleButton.innerHTML = '<span class="google-g">G</span><span>Opening Google…</span>';
+  try { const result = await loginWithGoogle(); if (result?.user) await renderSignedIn(result.user); }
+  catch (error) { console.error('Google login failed:', error); showStatus(friendlyError(error), 'error'); }
+  finally { googleButton.disabled = false; googleButton.innerHTML = '<span class="google-g">G</span><span>Continue with Google</span>'; }
+});
+
+signOutButton.addEventListener('click', async () => {
+  signOutButton.disabled = true;
+  try { await logout(); } catch (error) { console.error('Sign out failed:', error); }
+  finally { signOutButton.disabled = false; }
+});
+
+try { const redirectResult = await completeRedirectLogin(); if (redirectResult?.user) await renderSignedIn(redirectResult.user); }
+catch (error) { console.error('Redirect completion failed:', error); showStatus(friendlyError(error), 'error'); }
+
 watchAuth(user => { if (user) { if (!activeUser || activeUser.uid !== user.uid || !activeRole) renderSignedIn(user); } else renderSignedOut(); });
