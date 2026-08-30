@@ -1,10 +1,11 @@
 import { loginWithGoogle, completeRedirectLogin, watchAuth, logout, getUserRole } from './auth.js';
-import { renderTrainingSessions } from './sessions.js';
+import { renderTrainingSessions } from './sessions-v39.js';
 import { renderAttendance } from './staff-attendance.js';
-import { ensureUserProfile, renderProfile } from './profile.js';
-import { renderReflections } from './staff-reflections.js';
+import { ensureUserProfile, renderProfile } from './profile-v39.js';
+import { renderReflections } from './reflections-v39.js';
 import { renderOverview } from './overview.js';
-import { renderTeamMonitor } from './team-monitor.js';
+import { renderTeacherInsights } from './teacher-insights.js';
+import { renderTeamMonitor } from './team-monitor-v39.js';
 import { initAppNavigation } from './navigation.js';
 
 const loginView = document.getElementById('loginView');
@@ -76,7 +77,7 @@ function renderCoachOverview() {
       <div class="next-action-copy">
         <span class="section-kicker">COACH ACCESS</span>
         <h2>Review player development</h2>
-        <p>Read player reflections, filter by level, and leave individual feedback. Training schedules and attendance management are handled by Teacher accounts.</p>
+        <p>Read reflections, filter by level, tag development areas, and leave individual feedback. Training schedules and attendance management remain with Teacher accounts.</p>
       </div>
       <button class="primary-btn compact-btn" type="button" id="coachReflectionShortcut">View reflections</button>
     </article>`;
@@ -104,7 +105,7 @@ async function loadDashboardSections({ role, user, profile }) {
   if (role === 'coach') {
     renderCoachOverview();
   } else if (role === 'teacher') {
-    jobs.push(renderOverview({ container: overviewSection, role: 'coach', user, profile }));
+    jobs.push(renderTeacherInsights({ container: overviewSection, user, onMessage: showDashboardMessage }));
   } else {
     jobs.push(renderOverview({ container: overviewSection, role: 'player', user, profile }));
   }
@@ -154,18 +155,21 @@ async function renderSignedIn(user) {
     dashboardRole.textContent = roleLabel(role);
     dashboardTitle.textContent = role === 'teacher' ? 'Teacher Dashboard' : role === 'coach' ? 'Coach Dashboard' : role === 'captain' ? 'Captain Dashboard' : 'Player Dashboard';
     dashboardCopy.textContent = role === 'teacher'
-      ? 'Manage training, attendance, reflections, players and member roles.'
+      ? 'Manage the team, track development, review sessions and export term progress.'
       : role === 'coach'
         ? 'Review player reflections and give targeted coaching feedback.'
         : role === 'captain'
-          ? 'Train like every player, and help the team stay on top of attendance and reflections.'
-          : 'See what is next, check in for training and keep your reflections up to date.';
-    profileNavLabel.textContent = role === 'player' || role === 'captain' ? 'Profile' : 'Players';
+          ? 'Train like every player, track your own progress, and help the team stay accountable.'
+          : 'Train, reflect, carry your goals forward and see your development over time.';
+    profileNavLabel.textContent = role === 'teacher' ? 'Members' : role === 'coach' ? 'Players' : 'Progress';
 
     hideStatus();
     loginView.hidden = true;
     dashboardView.hidden = false;
     initAppNavigation(role);
+    document.querySelectorAll('[data-profile-nav-label]').forEach(node => {
+      node.textContent = role === 'teacher' ? 'Members' : role === 'coach' ? 'Players' : 'Progress';
+    });
     await loadDashboardSections({ role, user, profile });
   } catch (error) {
     console.error('Dashboard load failed:', error);
