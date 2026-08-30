@@ -144,9 +144,13 @@ service cloud.firestore {
     }
 
     match /termReflections/{termReflectionId} {
-      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isStaff());
+      // A player reads the deterministic document that starts with their own UID.
+      // Staff may list/read all term reflections for progress reporting.
+      allow get: if signedIn() && (isStaff() || termReflectionId.matches('^' + request.auth.uid + '_.*$'));
+      allow list: if isStaff();
 
       allow create: if signedIn()
+        && termReflectionId.matches('^' + request.auth.uid + '_.*$')
         && request.resource.data.studentUid == request.auth.uid
         && request.resource.data.studentEmail == request.auth.token.email
         && request.resource.data.termKey is string
