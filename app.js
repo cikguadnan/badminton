@@ -1,5 +1,6 @@
 import { loginWithGoogle, completeRedirectLogin, watchAuth, logout, getUserRole } from './auth.js';
 import { renderTrainingSessions } from './sessions.js';
+import { renderAttendance } from './attendance.js';
 
 const loginView = document.getElementById('loginView');
 const dashboardView = document.getElementById('dashboardView');
@@ -12,6 +13,7 @@ const dashboardRole = document.getElementById('dashboardRole');
 const dashboardTitle = document.getElementById('dashboardTitle');
 const dashboardCopy = document.getElementById('dashboardCopy');
 const trainingSection = document.getElementById('trainingSection');
+const attendanceSection = document.getElementById('attendanceSection');
 const dashboardMessage = document.getElementById('dashboardMessage');
 
 let handlingUser = false;
@@ -83,6 +85,13 @@ async function renderSignedIn(user) {
 
     await renderTrainingSessions({
       container: trainingSection,
+      role,
+      user,
+      onMessage: showDashboardMessage
+    });
+
+    await renderAttendance({
+      container: attendanceSection,
       role,
       user,
       onMessage: showDashboardMessage
