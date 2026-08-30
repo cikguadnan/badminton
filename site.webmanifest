@@ -1,0 +1,16 @@
+{
+  "name": "WRSS Badminton Training Hub",
+  "short_name": "WRSS Badminton",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#08110e",
+  "theme_color": "#10221b",
+  "icons": [
+    {
+      "src": "favicon.svg?v=3.6",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
