@@ -31,6 +31,7 @@ function friendlyError(error) {
 let auth;
 let provider;
 let appLoaded = false;
+let loadingPromise = null;
 
 try {
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
@@ -46,26 +47,38 @@ try {
 
 async function loadJournalApp() {
   if (appLoaded) return;
-  appLoaded = true;
+  if (loadingPromise) return loadingPromise;
   show('Google sign-in successful. Loading training hub…');
-  try {
-    await import('./app.js?v=2.2.8');
-    if (googleBtn) googleBtn.removeEventListener('click', bootstrapSignIn);
-  } catch (error) {
-    appLoaded = false;
-    console.error('Journal app failed to load after sign-in:', error);
-    show(`Signed in to Google, but the journal could not load: ${error?.message || error}`, true);
-  }
+  loadingPromise = (async () => {
+    try {
+      await import(`./app.js?v=2.2.9-${Date.now()}`);
+      appLoaded = true;
+      clearMessage();
+      if (googleBtn) googleBtn.removeEventListener('click', bootstrapSignIn);
+    } catch (error) {
+      console.error('Journal app failed to load after sign-in:', error);
+      show(`Signed in to Google, but the training hub could not load: ${error?.message || error}`, true);
+      throw error;
+    } finally {
+      loadingPromise = null;
+    }
+  })();
+  return loadingPromise;
 }
 
 async function bootstrapSignIn() {
-  if (!auth || !provider || !googleBtn) return;
+  if (!auth || !provider || !googleBtn) {
+    show('Google sign-in is not ready. Please refresh the page.', true);
+    return;
+  }
   clearMessage();
   const original = googleBtn.innerHTML;
   googleBtn.disabled = true;
   googleBtn.innerHTML = '<span class="google-g">G</span><span>Opening Google…</span>';
   try {
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    if (result?.user) await loadJournalApp();
+    else show('Google sign-in completed, but no account was returned. Please try again.', true);
   } catch (error) {
     console.error('Google popup sign-in failed:', error);
     if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/cancelled-popup-request') {
@@ -77,7 +90,7 @@ async function bootstrapSignIn() {
         console.error('Google redirect sign-in failed:', redirectError);
         show(friendlyError(redirectError), true);
       }
-    } else {
+    } else if (!String(error?.message || '').includes('training hub could not load')) {
       show(friendlyError(error), error?.code !== 'auth/popup-closed-by-user');
     }
   } finally {
@@ -89,11 +102,16 @@ async function bootstrapSignIn() {
 if (googleBtn && auth) googleBtn.addEventListener('click', bootstrapSignIn);
 
 if (auth) {
-  getRedirectResult(auth).catch(error => {
-    console.error('Redirect result failed:', error);
-    show(friendlyError(error), true);
-  });
+  getRedirectResult(auth)
+    .then(result => {
+      if (result?.user) return loadJournalApp();
+    })
+    .catch(error => {
+      console.error('Redirect result failed:', error);
+      show(friendlyError(error), true);
+    });
+
   onAuthStateChanged(auth, user => {
-    if (user) loadJournalApp();
+    if (user && !appLoaded && !loadingPromise) loadJournalApp().catch(() => {});
   });
 }
