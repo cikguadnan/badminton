@@ -83,13 +83,11 @@ service cloud.firestore {
           || (legacyCoach() && request.resource.data.role == 'coach')
         );
 
-      // Members may edit their own profile details but never their own role.
       allow update: if signedIn() && request.auth.uid == userId
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.email == resource.data.email
         && request.resource.data.role == resource.data.role;
 
-      // Teachers manage roles for every other member. Their own Teacher role is protected.
       allow update: if isTeacher()
         && userId != request.auth.uid
         && request.resource.data.uid == resource.data.uid
@@ -101,7 +99,6 @@ service cloud.firestore {
     }
 
     match /attendance/{attendanceId} {
-      // Captains can monitor completion status; only Teachers manage staff-side attendance.
       allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher() || isCaptain());
       allow create: if signedIn()
         && request.resource.data.studentUid == request.auth.uid
@@ -124,7 +121,6 @@ service cloud.firestore {
     }
 
     match /reflections/{reflectionId} {
-      // Captains use this read permission only for completion monitoring in the app.
       allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isStaff() || isCaptain());
       allow create: if signedIn()
         && request.resource.data.studentUid == request.auth.uid
@@ -144,6 +140,27 @@ service cloud.firestore {
         && request.resource.data.studentEmail == resource.data.studentEmail
         && resource.data.sessionId is string
         && sessionStillOpen(resource.data.sessionId);
+      allow delete: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher());
+    }
+
+    match /termReflections/{termReflectionId} {
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isStaff());
+
+      allow create: if signedIn()
+        && request.resource.data.studentUid == request.auth.uid
+        && request.resource.data.studentEmail == request.auth.token.email
+        && request.resource.data.termKey is string
+        && request.resource.data.biggestImprovement is string
+        && request.resource.data.stillStruggle is string
+        && request.resource.data.proudestMoment is string
+        && request.resource.data.nextTermGoal is string;
+
+      allow update: if signedIn()
+        && resource.data.studentUid == request.auth.uid
+        && request.resource.data.studentUid == resource.data.studentUid
+        && request.resource.data.studentEmail == resource.data.studentEmail
+        && request.resource.data.termKey == resource.data.termKey;
+
       allow delete: if signedIn() && (resource.data.studentUid == request.auth.uid || isTeacher());
     }
 
