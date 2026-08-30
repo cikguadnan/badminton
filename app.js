@@ -1,6 +1,6 @@
 import { loginWithGoogle, completeRedirectLogin, watchAuth, logout, getUserRole } from './auth.js';
 import { renderTrainingSessions } from './sessions.js';
-import { renderAttendance } from './attendance.js';
+import { renderAttendance } from './staff-attendance.js';
 import { ensureUserProfile, renderProfile } from './profile.js';
 import { renderReflections } from './staff-reflections.js';
 import { renderOverview } from './overview.js';
@@ -95,9 +95,9 @@ async function loadDashboardSections({ role, user, profile }) {
   }
 
   if (role === 'teacher') {
-    // Existing schedule/attendance modules use "coach" as their legacy full-staff mode.
+    // Existing schedule module uses "coach" as its legacy full-staff mode.
     jobs.push(renderTrainingSessions({ container: trainingSection, role: 'coach', user, onMessage: showDashboardMessage }));
-    jobs.push(renderAttendance({ container: attendanceSection, role: 'coach', user, onMessage: showDashboardMessage }));
+    jobs.push(renderAttendance({ container: attendanceSection, role: 'teacher', user, onMessage: showDashboardMessage }));
   } else if (role === 'player') {
     jobs.push(renderTrainingSessions({ container: trainingSection, role, user, onMessage: showDashboardMessage }));
     jobs.push(renderAttendance({ container: attendanceSection, role, user, onMessage: showDashboardMessage }));
