@@ -47,8 +47,9 @@ try {
 async function loadJournalApp() {
   if (appLoaded) return;
   appLoaded = true;
+  show('Google sign-in successful. Loading training hub…');
   try {
-    await import('./app.js?v=2.2.7');
+    await import('./app.js?v=2.2.8');
     if (googleBtn) googleBtn.removeEventListener('click', bootstrapSignIn);
   } catch (error) {
     appLoaded = false;
@@ -63,7 +64,6 @@ async function bootstrapSignIn() {
   const original = googleBtn.innerHTML;
   googleBtn.disabled = true;
   googleBtn.innerHTML = '<span class="google-g">G</span><span>Opening Google…</span>';
-
   try {
     await signInWithPopup(auth, provider);
   } catch (error) {
@@ -93,7 +93,6 @@ if (auth) {
     console.error('Redirect result failed:', error);
     show(friendlyError(error), true);
   });
-
   onAuthStateChanged(auth, user => {
     if (user) loadJournalApp();
   });
