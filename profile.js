@@ -22,6 +22,18 @@ function secondaryLevel(className = '') {
   return level ? `sec${level}` : 'other';
 }
 
+function displayRole(role) {
+  const value = String(role || '').toLowerCase();
+  if (value === 'teacher') return 'Teacher';
+  if (value === 'coach') return 'Coach';
+  if (value === 'captain') return 'Captain';
+  return 'Player';
+}
+
+function storedRole(role) {
+  return role === 'player' ? 'student' : role;
+}
+
 function buildLevelFilter() {
   const wrap = make('div', 'staff-filter-bar');
   const label = make('label', 'field staff-filter-field');
@@ -41,7 +53,7 @@ function buildLevelFilter() {
 export async function ensureUserProfile(user, role) {
   const reference = doc(db, 'users', user.uid);
   const snapshot = await getDoc(reference);
-  const expectedRole = role === 'player' ? 'student' : role;
+  const expectedRole = storedRole(role);
 
   if (!snapshot.exists()) {
     const profile = {
@@ -75,17 +87,23 @@ async function saveOwnProfile({ user, profile, name, className }) {
   }, { merge: true });
 }
 
-async function renderPlayerProfile({ container, user, profile, onMessage, onProfileUpdated }) {
+async function renderPlayerProfile({ container, user, profile, onMessage, onProfileUpdated, role }) {
   container.replaceChildren();
   const heading = make('div', 'section-heading player-sessions-heading');
   const copy = make('div');
   copy.append(
-    make('span', 'section-kicker', 'PROFILE'),
+    make('span', 'section-kicker', role === 'captain' ? 'CAPTAIN PROFILE' : 'PROFILE'),
     make('h2', '', 'My player profile'),
-    make('p', '', 'Keep your name and class updated so your coach can identify your submissions.')
+    make('p', '', role === 'captain' ? 'You have normal player access plus the Team Monitor captain tool.' : 'Keep your name and class updated so staff can identify your submissions.')
   );
   heading.append(copy);
   container.append(heading);
+
+  if (role === 'captain') {
+    const badge = make('div', 'captain-profile-note');
+    badge.append(make('strong', '', 'Captain'), make('span', '', 'Help the team stay on top of attendance and reflections.'));
+    container.append(badge);
+  }
 
   const card = make('div', 'profile-card');
   const form = document.createElement('form');
@@ -136,23 +154,23 @@ async function renderPlayerProfile({ container, user, profile, onMessage, onProf
   });
 }
 
-async function renderStaffPlayers({ container }) {
-  container.replaceChildren();
+async function loadMembers() {
+  const snapshot = await getDocs(collection(db, 'users'));
+  return snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+}
+
+function renderPlayerDirectory({ container, members }) {
+  const players = members.filter(item => ['student', 'player', 'captain'].includes(String(item.role || '').toLowerCase()));
   const heading = make('div', 'section-heading');
   const copy = make('div');
   copy.append(
     make('span', 'section-kicker', 'PLAYERS'),
     make('h2', '', 'Player directory'),
-    make('p', '', 'Filter players by secondary level. Levels are detected automatically from their class.')
+    make('p', '', 'Filter players by secondary level. Captains remain part of the player list.')
   );
   heading.append(copy);
   container.append(heading);
-
-  const snapshot = await getDocs(collection(db, 'users'));
-  const players = snapshot.docs
-    .map(item => ({ id: item.id, ...item.data() }))
-    .filter(item => item.role === 'student' || item.role === 'player')
-    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 
   if (!players.length) {
     container.append(make('div', 'empty-card', 'No player profiles yet.'));
@@ -181,25 +199,99 @@ async function renderStaffPlayers({ container }) {
       const body = make('div');
       body.append(
         make('strong', '', player.name || 'Player'),
-        make('span', '', player.className || 'Class not set'),
+        make('span', '', `${player.className || 'Class not set'}${player.role === 'captain' ? ' • Captain' : ''}`),
         make('small', '', player.email || '')
       );
       card.append(avatar, body);
       grid.append(card);
     }
   }
-
   select.addEventListener('change', draw);
   draw();
+}
+
+async function changeMemberRole({ member, role, user, onMessage }) {
+  if (member.uid === user.uid || member.id === user.uid) throw new Error('Your own Teacher role is protected.');
+  await setDoc(doc(db, 'users', member.uid || member.id), {
+    role: storedRole(role),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  onMessage(`${member.name || 'Member'} is now ${displayRole(role)}.`, 'success');
+}
+
+function renderRoleManager({ container, members, user, onMessage, redraw }) {
+  const section = make('section', 'role-manager-section');
+  const heading = make('div', 'section-heading');
+  const copy = make('div');
+  copy.append(
+    make('span', 'section-kicker', 'TEACHER ADMIN'),
+    make('h2', '', 'Member roles'),
+    make('p', '', 'Assign Player, Captain, Coach or Teacher access. Changes apply the next time that member refreshes or signs in.')
+  );
+  heading.append(copy);
+  section.append(heading);
+
+  const list = make('div', 'role-manager-list');
+  for (const member of members) {
+    const row = make('article', 'role-manager-row');
+    const person = make('div', 'role-person');
+    person.append(
+      make('strong', '', member.name || 'Member'),
+      make('span', '', `${member.className || 'No class'} • ${member.email || ''}`)
+    );
+    const control = make('div', 'role-control');
+    const select = document.createElement('select');
+    select.className = 'role-select';
+    select.innerHTML = '<option value="player">Player</option><option value="captain">Captain</option><option value="coach">Coach</option><option value="teacher">Teacher</option>';
+    const current = ['student','player'].includes(String(member.role || '').toLowerCase()) ? 'player' : String(member.role || 'player').toLowerCase();
+    select.value = ['player','captain','coach','teacher'].includes(current) ? current : 'player';
+    const isSelf = (member.uid || member.id) === user.uid;
+    if (isSelf) {
+      select.disabled = true;
+      select.title = 'Your own Teacher role is protected';
+    }
+    const badge = make('span', `member-role-badge ${current}`, displayRole(current));
+    control.append(badge, select);
+    row.append(person, control);
+    if (isSelf) row.append(make('small', 'self-role-note', 'Your role is protected'));
+    list.append(row);
+
+    select.addEventListener('change', async () => {
+      const nextRole = select.value;
+      select.disabled = true;
+      try {
+        await changeMemberRole({ member, role: nextRole, user, onMessage });
+        await redraw();
+      } catch (error) {
+        console.error('Could not change member role:', error);
+        onMessage(error?.message || 'Could not change role.', 'error');
+        select.value = current;
+        select.disabled = false;
+      }
+    });
+  }
+  section.append(list);
+  container.append(section);
+}
+
+async function renderStaffPlayers({ container, role, user, onMessage }) {
+  container.replaceChildren();
+  const members = await loadMembers();
+  renderPlayerDirectory({ container, members });
+
+  if (role === 'teacher') {
+    const redraw = () => renderStaffPlayers({ container, role, user, onMessage });
+    renderRoleManager({ container, members, user, onMessage, redraw });
+  }
 }
 
 export async function renderProfile({ container, role, user, profile, onMessage, onProfileUpdated }) {
   container.replaceChildren(make('div', 'loading-card', 'Loading profile…'));
   try {
     if (role === 'teacher' || role === 'coach') {
-      await renderStaffPlayers({ container });
+      await renderStaffPlayers({ container, role, user, onMessage });
     } else {
-      await renderPlayerProfile({ container, user, profile, onMessage, onProfileUpdated });
+      await renderPlayerProfile({ container, user, profile, onMessage, onProfileUpdated, role });
     }
   } catch (error) {
     console.error('Could not load profile:', error);
