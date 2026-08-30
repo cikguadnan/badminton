@@ -7,7 +7,7 @@
   <meta name="description" content="WRSS Badminton Training Hub" />
   <title>WRSS Badminton Training Hub</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
-  <link rel="stylesheet" href="styles.css?v=3.2" />
+  <link rel="stylesheet" href="styles.css?v=3.3" />
   <link rel="stylesheet" href="attendance.css?v=3.2" />
 </head>
 <body>
@@ -44,7 +44,7 @@
           <span>Continue with Google</span>
         </button>
 
-        <div class="login-note">V3 clean rebuild • Attendance</div>
+        <div class="login-note">WRSS Badminton Training Hub • V3</div>
       </div>
     </section>
 
@@ -74,12 +74,23 @@
           </div>
         </div>
 
-        <section id="trainingSection" class="training-section" aria-live="polite"></section>
-        <section id="attendanceSection" class="training-section" aria-live="polite"></section>
+        <nav class="dashboard-nav" aria-label="Dashboard sections">
+          <a href="#trainingSection">Training</a>
+          <a href="#attendanceSection">Attendance</a>
+          <a href="#reflectionsSection">Reflections</a>
+          <a href="#profileSection">Profile / Players</a>
+        </nav>
+
+        <section id="trainingSection" class="training-section dashboard-feature" aria-live="polite"></section>
+        <section id="attendanceSection" class="training-section dashboard-feature" aria-live="polite"></section>
+        <section id="reflectionsSection" class="training-section dashboard-feature" aria-live="polite"></section>
+        <section id="profileSection" class="training-section dashboard-feature" aria-live="polite"></section>
+
+        <footer class="dashboard-footer">WRSS Badminton Training Hub • V3 complete workflow</footer>
       </div>
     </section>
   </main>
 
-  <script type="module" src="app.js?v=3.2.0"></script>
+  <script type="module" src="app.js?v=3.3.0"></script>
 </body>
 </html>
